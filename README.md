@@ -10,6 +10,7 @@ João Pedro Santana de Araújo
 - Tarefa feita <_>
 
 Nathasha Scanoni de Melo Gonçalves 
+- Tarefa feita, bebêss :)
 
 Shislayny Evelen da Silva Costa 
 - Tarefinha feita amores <3
