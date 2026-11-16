@@ -1,6 +1,7 @@
 THE SEVEN
 
-Fagner Moura de Fraga 
+Fagner Moura de Fraga
+- Tarefa feita B)
 
 Gabrielly Oliveira Ferreira da Silva
 
