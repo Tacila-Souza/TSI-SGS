@@ -1,0 +1,21 @@
+# v0 sandbox internal files
+front-end/__v0_runtime_loader.js
+front-end/__v0_devtools.tsx
+front-end/__v0_jsx-dev-runtime.ts
+front-end/.snowflake/
+front-end/.v0-trash/
+front-end/.vercel/
+
+# Environment variables
+front-end/.env*.local
+
+# Common ignores
+front-end/node_modules
+front-end/.next/
+front-end/.DS_Store
+front-end/tsconfig.tsbuildinfo
+
+# Backend environment (real credentials must not be versioned)
+back-end/.env
+back-end/.env.*
+!back-end/.env.example
