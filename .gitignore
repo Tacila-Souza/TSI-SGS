@@ -8,6 +8,7 @@ front-end/.vercel/
 
 # Environment variables
 front-end/.env*.local
+front-end/.env
 
 # Common ignores
 front-end/node_modules
