@@ -1,0 +1,17 @@
+<?php
+declare(strict_types=1);
+
+function configurar_cors(): void
+{
+    $origem = getenv('APP_ORIGIN') ?: 'http://localhost:3000';
+
+    header("Access-Control-Allow-Origin: {$origem}");
+    header('Vary: Origin');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type');
+
+    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
+        http_response_code(204);
+        exit;
+    }
+}
