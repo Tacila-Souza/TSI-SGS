@@ -25,9 +25,12 @@ async function request<T>(caminho: string, init?: RequestInit): Promise<Envelope
     resposta = await fetch(`${BASE_URL}${caminho}`, {
       ...init,
       headers: {
-        'Content-Type': 'application/json',
-        ...(init?.headers ?? {}),
-      },
+      Accept: 'application/json',
+       ...(init?.body != null
+       ? { 'Content-Type': 'application/json' }
+        : {}),
+       ...(init?.headers ?? {}),
+    },
     })
   } catch {
     throw new ApiError('Não foi possível conectar à API.', 0)
