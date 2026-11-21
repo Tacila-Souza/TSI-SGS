@@ -5,22 +5,18 @@ require dirname(__DIR__, 4) . '/src/bootstrap.php';
 
 exigir_metodo('DELETE');
 exigir_identidade('admin');
-$id = parametro_inteiro('id');
+$id = query_int('id');
 
-if (carregar_curso_dto($pdo, $id) === null) {
-    throw new RegraNegocioException('Curso não encontrado.', 404);
-}
-
-$comando = $pdo->prepare('SELECT COUNT(*) FROM disciplinas WHERE curso_id = ?');
-$comando->execute([$id]);
-if ((int) $comando->fetchColumn() > 0) {
-    throw new RegraNegocioException(
-        'Não é possível excluir um curso com disciplinas vinculadas.',
-        409,
+$stmt = $pdo->prepare('SELECT COUNT(*) FROM disciplinas WHERE curso_id = ?');
+$stmt->execute([$id]);
+if ((int) $stmt->fetchColumn() > 0) {
+    responder_erro(
+        'Não é possível excluir um curso com disciplinas vinculadas. Remova as disciplinas primeiro.',
+        409
     );
 }
 
-$comando = $pdo->prepare('DELETE FROM cursos WHERE id = ?');
-$comando->execute([$id]);
+$stmt = $pdo->prepare('DELETE FROM cursos WHERE id = ?');
+$stmt->execute([$id]);
 
-responder_sucesso(['afetados' => $comando->rowCount()], 200, 'Curso excluído.');
+responder_sucesso(['id' => $id], 200, 'Curso excluído.');

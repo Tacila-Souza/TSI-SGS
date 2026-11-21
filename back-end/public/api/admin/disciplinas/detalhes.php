@@ -5,11 +5,11 @@ require dirname(__DIR__, 4) . '/src/bootstrap.php';
 
 exigir_metodo('GET');
 exigir_identidade('admin');
-$id = parametro_inteiro('id');
+$id = query_int('id');
 
-$dto = carregar_disciplina_dto($pdo, $id);
-if ($dto === null) {
-    throw new RegraNegocioException('Disciplina não encontrada.', 404);
+$disciplina = buscar_disciplina($pdo, $id);
+if ($disciplina === null) {
+    responder_erro('Disciplina não encontrada.', 404);
 }
 
-responder_sucesso($dto);
+responder_sucesso(serializar_disciplina($disciplina));

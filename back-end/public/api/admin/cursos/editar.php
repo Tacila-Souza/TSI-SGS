@@ -5,29 +5,29 @@ require dirname(__DIR__, 4) . '/src/bootstrap.php';
 
 exigir_metodo('PUT');
 exigir_identidade('admin');
-$id = parametro_inteiro('id');
+$id = query_int('id');
 $dados = ler_json();
 
-$validado = validar_dados_curso($dados);
-
-if (carregar_curso_dto($pdo, $id) === null) {
-    throw new RegraNegocioException('Curso não encontrado.', 404);
+$stmt = $pdo->prepare('SELECT id, sigla, nome, descricao FROM cursos WHERE id = ?');
+$stmt->execute([$id]);
+$curso = $stmt->fetch();
+if ($curso === false) {
+    responder_erro('Curso não encontrado.', 404);
 }
 
-$comando = $pdo->prepare('SELECT id FROM cursos WHERE sigla = ? AND id <> ? LIMIT 1');
-$comando->execute([$validado['sigla'], $id]);
-if ($comando->fetchColumn() !== false) {
-    throw new RegraNegocioException('Curso já cadastrado.', 409, ['sigla' => 'Esta sigla já pertence a outro curso.']);
+$sigla = strtoupper(campo_texto($dados, 'sigla', 20));
+$nome = campo_texto($dados, 'nome', 120);
+$descricao = isset($dados['descricao']) ? trim((string) $dados['descricao']) : null;
+
+$stmt = $pdo->prepare('SELECT COUNT(*) FROM cursos WHERE sigla = ? AND id <> ?');
+$stmt->execute([$sigla, $id]);
+if ((int) $stmt->fetchColumn() > 0) {
+    throw new HttpErro('Sigla de curso já cadastrada.', 409);
 }
 
-try {
-    $comando = $pdo->prepare('UPDATE cursos SET sigla = ?, nome = ?, descricao = ? WHERE id = ?');
-    $comando->execute([$validado['sigla'], $validado['nome'], $validado['descricao'], $id]);
-} catch (PDOException $erro) {
-    if (str_starts_with((string) $erro->getCode(), '23')) {
-        throw new RegraNegocioException('Curso já cadastrado.', 409, ['sigla' => 'Esta sigla já pertence a outro curso.']);
-    }
-    throw $erro;
-}
+$stmt = $pdo->prepare('UPDATE cursos SET sigla = ?, nome = ?, descricao = ? WHERE id = ?');
+$stmt->execute([$sigla, $nome, $descricao, $id]);
 
-responder_sucesso(carregar_curso_dto($pdo, $id));
+$stmt = $pdo->prepare('SELECT id, sigla, nome, descricao FROM cursos WHERE id = ?');
+$stmt->execute([$id]);
+responder_sucesso(serializar_curso($stmt->fetch()), 200, 'Curso atualizado com sucesso.');

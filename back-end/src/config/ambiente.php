@@ -2,16 +2,18 @@
 declare(strict_types=1);
 
 /**
- * Carrega o arquivo .env da raiz do backend para o ambiente do processo.
- * Não há dependência de bibliotecas externas.
+ * Carrega variáveis de back-end/.env para o ambiente de desenvolvimento.
+ * Variáveis já definidas no ambiente do sistema não são sobrescritas.
  */
-function carregar_ambiente(string $caminho): void
+function carregar_ambiente(): void
 {
-    if (!is_file($caminho)) {
+    $arquivo = dirname(__DIR__, 2) . '/.env';
+
+    if (!is_file($arquivo)) {
         return;
     }
 
-    $linhas = file($caminho, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    $linhas = file($arquivo, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     if ($linhas === false) {
         return;
     }
@@ -23,17 +25,25 @@ function carregar_ambiente(string $caminho): void
         }
 
         $partes = explode('=', $linha, 2);
-        if (count($partes) !== 2) {
-            continue;
-        }
-
         $chave = trim($partes[0]);
-        $valor = trim($partes[1]);
-        if ($chave === '') {
+        $valor = isset($partes[1]) ? trim($partes[1]) : '';
+        $valor = trim($valor, "\"'");
+
+        if ($chave === '' || getenv($chave) !== false) {
             continue;
         }
 
         putenv("{$chave}={$valor}");
         $_ENV[$chave] = $valor;
     }
+}
+
+carregar_ambiente();
+
+/** Identidade padrão do MVP. O frontend envia esses IDs na query string. */
+if (!defined('PROFESSOR_PADRAO')) {
+    define('PROFESSOR_PADRAO', (int) (getenv('PROFESSOR_PADRAO') ?: 1));
+}
+if (!defined('ALUNO_PADRAO')) {
+    define('ALUNO_PADRAO', (int) (getenv('ALUNO_PADRAO') ?: 1));
 }

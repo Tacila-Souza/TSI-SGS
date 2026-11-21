@@ -2,32 +2,45 @@
 declare(strict_types=1);
 
 /**
- * Identidade do MVP: ?aluno_id= ou ?professor_id= na query string.
- * Confere apenas existência e situação ativa do registro.
+ * Identifica o perfil da requisição no MVP.
+ *
+ * Admin: não exige identificador (identidade fixa u-coord).
+ * Professor/aluno: exigem ?professor_id= / ?aluno_id= na query string.
+ * PROFESSOR_PADRAO e ALUNO_PADRAO ficam disponíveis para o frontend,
+ * mas o parâmetro continua obrigatório conforme o contrato.
  */
-function exigir_identidade(string $perfil): int
+function exigir_identidade(string $perfil): ?int
 {
-    global $pdo;
-
-    // A coordenação é uma identidade fixa do frontend (u-coord), sem registro no banco.
     if ($perfil === 'admin') {
-        return 0;
+        return null;
+    }
+
+    if (!in_array($perfil, ['professor', 'aluno'], true)) {
+        responder_erro('Perfil desconhecido.', 500);
     }
 
     $chave = $perfil === 'professor' ? 'professor_id' : 'aluno_id';
-    $id = parametro_inteiro($chave);
+    $id = query_int($chave);
 
-    $sql = match ($perfil) {
-        'aluno' => 'SELECT id FROM alunos WHERE id = ? AND status = "ativo"',
-        'professor' => 'SELECT id FROM professores WHERE id = ? AND status = "ativo"',
-        default => throw new RegraNegocioException('Perfil inválido.', 400),
-    };
+    if ($id === null) {
+        responder_erro("Parâmetro '{$chave}' é obrigatório.", 400, [
+            $chave => 'Informe o identificador do perfil.',
+        ]);
+    }
 
-    $comando = $pdo->prepare($sql);
-    $comando->execute([$id]);
+    global $pdo;
 
-    if ($comando->fetchColumn() === false) {
-        throw new RegraNegocioException('Usuário não encontrado ou inativo.', 403);
+    $tabela = $perfil === 'professor' ? 'professores' : 'alunos';
+    $stmt = $pdo->prepare("SELECT status FROM {$tabela} WHERE id = ?");
+    $stmt->execute([$id]);
+    $registro = $stmt->fetch();
+
+    if ($registro === false) {
+        responder_erro('Identidade informada não encontrada.', 404);
+    }
+
+    if ($registro['status'] !== 'ativo') {
+        responder_erro('Identidade informada está inativa.', 403);
     }
 
     return $id;

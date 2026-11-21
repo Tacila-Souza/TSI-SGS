@@ -5,13 +5,14 @@ require dirname(__DIR__, 4) . '/src/bootstrap.php';
 
 exigir_metodo('DELETE');
 exigir_identidade('admin');
-$id = parametro_inteiro('id');
+$id = query_int('id');
 
-if (carregar_usuario_dto($pdo, 'professor', $id) === null) {
-    throw new RegraNegocioException('Professor não encontrado.', 404);
+$professor = buscar_professor($pdo, $id);
+if ($professor === null) {
+    responder_erro('Professor não encontrado.', 404);
 }
 
-$comando = $pdo->prepare("UPDATE professores SET status = 'inativo' WHERE id = ?");
-$comando->execute([$id]);
+$stmt = $pdo->prepare("UPDATE professores SET status = 'inativo' WHERE id = ?");
+$stmt->execute([$id]);
 
-responder_sucesso(['afetados' => $comando->rowCount()], 200, 'Professor desativado.');
+responder_sucesso(['id' => $id], 200, 'Professor excluído logicamente.');

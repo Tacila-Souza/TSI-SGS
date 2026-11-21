@@ -5,7 +5,7 @@ $host = getenv('DB_HOST') ?: '127.0.0.1';
 $porta = getenv('DB_PORT') ?: '3306';
 $dbname = getenv('DB_NAME') ?: 'gestao_seminarios';
 $usuario = getenv('DB_USER') ?: 'root';
-$senha = getenv('DB_PASS') ?: '';
+$senha = getenv('DB_PASS') !== false ? (string) getenv('DB_PASS') : '';
 
 $pdo = new PDO(
     "mysql:host={$host};port={$porta};dbname={$dbname};charset=utf8mb4",

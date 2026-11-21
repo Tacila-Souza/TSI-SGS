@@ -7,24 +7,21 @@ exigir_metodo('POST');
 exigir_identidade('admin');
 $dados = ler_json();
 
-$validado = validar_dados_curso($dados);
+$sigla = strtoupper(campo_texto($dados, 'sigla', 20));
+$nome = campo_texto($dados, 'nome', 120);
+$descricao = isset($dados['descricao']) ? trim((string) $dados['descricao']) : null;
 
-$comando = $pdo->prepare('SELECT id FROM cursos WHERE sigla = ? LIMIT 1');
-$comando->execute([$validado['sigla']]);
-if ($comando->fetchColumn() !== false) {
-    throw new RegraNegocioException('Curso já cadastrado.', 409, ['sigla' => 'Esta sigla já pertence a outro curso.']);
+$stmt = $pdo->prepare('SELECT COUNT(*) FROM cursos WHERE sigla = ?');
+$stmt->execute([$sigla]);
+if ((int) $stmt->fetchColumn() > 0) {
+    throw new HttpErro('Sigla de curso já cadastrada.', 409, [
+        'sigla' => 'Valor já existente.',
+    ]);
 }
 
-try {
-    $comando = $pdo->prepare(
-        'INSERT INTO cursos (sigla, nome, descricao) VALUES (?, ?, ?)'
-    );
-    $comando->execute([$validado['sigla'], $validado['nome'], $validado['descricao']]);
-} catch (PDOException $erro) {
-    if (str_starts_with((string) $erro->getCode(), '23')) {
-        throw new RegraNegocioException('Curso já cadastrado.', 409, ['sigla' => 'Esta sigla já pertence a outro curso.']);
-    }
-    throw $erro;
-}
+$stmt = $pdo->prepare('INSERT INTO cursos (sigla, nome, descricao) VALUES (?, ?, ?)');
+$stmt->execute([$sigla, $nome, $descricao]);
 
-responder_sucesso(carregar_curso_dto($pdo, (int) $pdo->lastInsertId()), 201, 'Curso cadastrado.');
+$stmt = $pdo->prepare('SELECT id, sigla, nome, descricao FROM cursos WHERE id = ?');
+$stmt->execute([(int) $pdo->lastInsertId()]);
+responder_sucesso(serializar_curso($stmt->fetch()), 201, 'Curso cadastrado com sucesso.');

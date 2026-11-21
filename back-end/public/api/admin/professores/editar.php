@@ -5,28 +5,37 @@ require dirname(__DIR__, 4) . '/src/bootstrap.php';
 
 exigir_metodo('PUT');
 exigir_identidade('admin');
-$id = parametro_inteiro('id');
+$id = query_int('id');
 $dados = ler_json();
 
-$validado = validar_dados_professor($dados);
-$status = array_key_exists('status', $dados) ? validar_status($dados['status']) : null;
-
-if (carregar_usuario_dto($pdo, 'professor', $id) === null) {
-    throw new RegraNegocioException('Professor não encontrado.', 404);
+$professor = buscar_professor($pdo, $id);
+if ($professor === null) {
+    responder_erro('Professor não encontrado.', 404);
 }
-validar_unicidade_usuario($pdo, 'professor', $validado['email'], $validado['registro'], $id);
 
-$comando = $pdo->prepare(
-    'UPDATE professores
-     SET nome_completo = ?, email = ?, registro = ?, status = COALESCE(?, status)
-     WHERE id = ?'
+$nome = campo_texto($dados, 'nome', 150);
+$email = campo_email($dados);
+$registro = campo_texto($dados, 'registro', 30);
+$status = campo_enum($dados + ['status' => $professor['status']], 'status', ['ativo', 'inativo']);
+
+foreach ([
+    'email' => $email,
+    'registro' => $registro,
+] as $coluna => $valor) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM professores WHERE {$coluna} = ? AND id <> ?");
+    $stmt->execute([$valor, $id]);
+    if ((int) $stmt->fetchColumn() > 0) {
+        throw new HttpErro('E-mail ou registro já cadastrado.', 409);
+    }
+}
+
+$stmt = $pdo->prepare(
+    'UPDATE professores SET nome_completo = ?, email = ?, registro = ?, status = ? WHERE id = ?'
 );
-$comando->execute([
-    $validado['nome'],
-    $validado['email'],
-    $validado['registro'],
-    $status,
-    $id,
-]);
+$stmt->execute([$nome, $email, $registro, $status, $id]);
 
-responder_sucesso(carregar_usuario_dto($pdo, 'professor', $id));
+responder_sucesso(
+    serializar_professor(buscar_professor($pdo, $id)),
+    200,
+    'Professor atualizado com sucesso.'
+);

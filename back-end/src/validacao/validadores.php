@@ -1,160 +1,129 @@
 <?php
 declare(strict_types=1);
 
-function texto_obrigatorio(mixed $valor, string $campo, int $maximo = 5000): string
+function campo_texto(array $dados, string $chave, int $max = 255): string
 {
-    if (!is_string($valor)) {
-        throw new RegraNegocioException('Dados inválidos.', 400, [$campo => 'Deve ser um texto.']);
+    $valor = isset($dados[$chave]) ? trim((string) $dados[$chave]) : '';
+    if ($valor === '') {
+        throw new HttpErro("O campo '{$chave}' é obrigatório.", 400, [
+            $chave => 'Campo obrigatório.',
+        ]);
     }
-
-    $texto = trim($valor);
-    if ($texto === '') {
-        throw new RegraNegocioException('Dados inválidos.', 400, [$campo => 'Campo obrigatório.']);
+    if (strlen($valor) > $max) {
+        throw new HttpErro("O campo '{$chave}' é longo demais.", 400, [
+            $chave => "Máximo de {$max} caracteres.",
+        ]);
     }
-    if (mb_strlen($texto) > $maximo) {
-        throw new RegraNegocioException('Dados inválidos.', 400, [$campo => "Máximo de {$maximo} caracteres."]);
-    }
-
-    return $texto;
-}
-
-function texto_opcional(mixed $valor, string $campo, int $maximo = 5000): string
-{
-    if ($valor === null) {
-        return '';
-    }
-    if (!is_string($valor)) {
-        throw new RegraNegocioException('Dados inválidos.', 400, [$campo => 'Deve ser um texto.']);
-    }
-
-    $texto = trim($valor);
-    if (mb_strlen($texto) > $maximo) {
-        throw new RegraNegocioException('Dados inválidos.', 400, [$campo => "Máximo de {$maximo} caracteres."]);
-    }
-
-    return $texto;
-}
-
-function validar_notas(mixed $bruto, array $criterios, array $integrantesIds): array
-{
-    if (!is_array($bruto) || !array_is_list($bruto)) {
-        throw new RegraNegocioException('Dados inválidos.', 400, ['notas' => 'Envie uma lista de notas.']);
-    }
-
-    $porId = [];
-    foreach ($criterios as $criterio) {
-        $porId[(int) $criterio['id']] = $criterio;
-    }
-
-    $integrantes = array_map('intval', $integrantesIds);
-    $normalizadas = [];
-    $vistas = [];
-
-    foreach ($bruto as $item) {
-        if (!is_array($item)) {
-            throw new RegraNegocioException('Dados inválidos.', 400, ['notas' => 'Cada nota deve ser um objeto.']);
-        }
-
-        $criterioId = filtrar_id($item['criterioId'] ?? null);
-        if (!isset($porId[$criterioId])) {
-            throw new RegraNegocioException('Dados inválidos.', 400, ['notas' => 'Critério não pertence a este seminário.']);
-        }
-
-        $alunoBruto = $item['alunoId'] ?? null;
-        $tipo = $porId[$criterioId]['tipo_avaliacao'];
-        $alunoId = null;
-
-        if ($tipo === 'grupo') {
-            if ($alunoBruto !== null) {
-                throw new RegraNegocioException('Dados inválidos.', 400, ['notas' => 'Critério de grupo não admite alunoId.']);
-            }
-        } else {
-            $alunoId = filtrar_id($alunoBruto);
-            if (!in_array($alunoId, $integrantes, true)) {
-                throw new RegraNegocioException('Dados inválidos.', 400, ['notas' => 'Aluno avaliado não integra o grupo.']);
-            }
-        }
-
-        $nota = $item['nota'] ?? null;
-        if (!is_int($nota) && !is_float($nota)) {
-            throw new RegraNegocioException('Dados inválidos.', 400, ['notas' => 'Nota deve ser um número.']);
-        }
-        if ($nota < 0 || $nota > 10) {
-            throw new RegraNegocioException('Dados inválidos.', 400, ['notas' => 'Nota deve estar entre 0 e 10.']);
-        }
-
-        $chave = $criterioId . ':' . ($alunoId ?? 'g');
-        if (isset($vistas[$chave])) {
-            throw new RegraNegocioException('Dados inválidos.', 400, ['notas' => 'Nota duplicada para o mesmo critério/aluno.']);
-        }
-        $vistas[$chave] = true;
-
-        $normalizadas[] = [
-            'criterioId' => $criterioId,
-            'alunoId' => $alunoId,
-            'nota' => round((float) $nota, 2),
-        ];
-    }
-
-    if ($normalizadas === []) {
-        throw new RegraNegocioException('Dados inválidos.', 400, ['notas' => 'Envie ao menos uma nota.']);
-    }
-
-    return $normalizadas;
-}
-
-function filtrar_id(mixed $valor): int
-{
-    if (!is_int($valor) || $valor <= 0) {
-        throw new RegraNegocioException('Dados inválidos.', 400, ['id' => 'Identificador inválido.']);
-    }
-
     return $valor;
 }
 
-function inteiro_positivo(mixed $valor, string $campo): int
+function campo_email(array $dados, string $chave = 'email'): string
 {
-    if (!is_int($valor) || $valor <= 0) {
-        throw new RegraNegocioException('Dados inválidos.', 400, [$campo => 'Informe um número inteiro positivo.']);
+    $valor = campo_texto($dados, $chave, 150);
+    if (filter_var($valor, FILTER_VALIDATE_EMAIL) === false) {
+        throw new HttpErro("O campo '{$chave}' deve ser um e-mail válido.", 400, [
+            $chave => 'E-mail inválido.',
+        ]);
     }
-
     return $valor;
 }
 
-function validar_status(mixed $valor): string
+function campo_int(array $dados, string $chave, int $min = 1): int
 {
-    if ($valor === null) {
-        return 'ativo';
+    $valor = filter_var($dados[$chave] ?? null, FILTER_VALIDATE_INT);
+    if ($valor === false || $valor < $min) {
+        throw new HttpErro("O campo '{$chave}' deve ser um inteiro >= {$min}.", 400, [
+            $chave => 'Valor inválido.',
+        ]);
     }
-    if (!is_string($valor) || !in_array($valor, ['ativo', 'inativo'], true)) {
-        throw new RegraNegocioException('Dados inválidos.', 400, ['status' => 'Escolha ativo ou inativo.']);
-    }
-
     return $valor;
 }
 
-function validar_lista_ids(mixed $bruto, string $campo, bool $permitirVazio = false): array
+function campo_ids(array $dados, string $chave): array
 {
-    if (!is_array($bruto) || !array_is_list($bruto)) {
-        throw new RegraNegocioException('Dados inválidos.', 400, [$campo => 'Envie uma lista de IDs.']);
+    $bruto = $dados[$chave] ?? null;
+    if (!is_array($bruto) || $bruto === []) {
+        throw new HttpErro("O campo '{$chave}' deve ser um array de IDs.", 400, [
+            $chave => 'Array de IDs obrigatório.',
+        ]);
     }
 
     $ids = [];
-    $vistos = [];
     foreach ($bruto as $item) {
-        if (!is_int($item) || $item <= 0) {
-            throw new RegraNegocioException('Dados inválidos.', 400, [$campo => 'IDs devem ser inteiros positivos.']);
+        $id = filter_var($item, FILTER_VALIDATE_INT);
+        if ($id === false || $id <= 0) {
+            throw new HttpErro("O campo '{$chave}' contém um ID inválido.", 400, [
+                $chave => 'Somente inteiros positivos.',
+            ]);
         }
-        if (isset($vistos[$item])) {
-            throw new RegraNegocioException('Dados inválidos.', 400, [$campo => 'IDs duplicados não são permitidos.']);
-        }
-        $vistos[$item] = true;
-        $ids[] = $item;
+        $ids[] = $id;
     }
 
-    if (!$permitirVazio && $ids === []) {
-        throw new RegraNegocioException('Dados inválidos.', 400, [$campo => 'Envie ao menos um ID.']);
+    return array_values(array_unique($ids));
+}
+
+function campo_ids_opcional(array $dados, string $chave): array
+{
+    $bruto = $dados[$chave] ?? [];
+    if (!is_array($bruto)) {
+        throw new HttpErro("O campo '{$chave}' deve ser um array de IDs.", 400, [
+            $chave => 'Array de IDs inválido.',
+        ]);
     }
 
-    return $ids;
+    $ids = [];
+    foreach ($bruto as $item) {
+        $id = filter_var($item, FILTER_VALIDATE_INT);
+        if ($id === false || $id <= 0) {
+            throw new HttpErro("O campo '{$chave}' contém um ID inválido.", 400);
+        }
+        $ids[] = $id;
+    }
+
+    return array_values(array_unique($ids));
+}
+
+function campo_data(array $dados, string $chave): string
+{
+    $valor = (string) ($dados[$chave] ?? '');
+    $partes = explode('-', $valor);
+    if (count($partes) !== 3 || !checkdate((int) $partes[1], (int) $partes[2], (int) $partes[0])) {
+        throw new HttpErro("O campo '{$chave}' deve ser uma data YYYY-MM-DD.", 400, [
+            $chave => 'Data inválida.',
+        ]);
+    }
+    return $valor;
+}
+
+function campo_hora(array $dados, string $chave): string
+{
+    $valor = (string) ($dados[$chave] ?? '');
+    if (preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $valor) !== 1) {
+        throw new HttpErro("O campo '{$chave}' deve ser HH:mm.", 400, [
+            $chave => 'Horário inválido.',
+        ]);
+    }
+    return $valor . ':00';
+}
+
+function campo_lista(array $dados, string $chave): array
+{
+    $valor = $dados[$chave] ?? null;
+    if (!is_array($valor) || $valor === []) {
+        throw new HttpErro("O campo '{$chave}' deve ser um array não vazio.", 400, [
+            $chave => 'Array obrigatório.',
+        ]);
+    }
+    return $valor;
+}
+
+function campo_enum(array $dados, string $chave, array $permitidos): string
+{
+    $valor = (string) ($dados[$chave] ?? '');
+    if (!in_array($valor, $permitidos, true)) {
+        throw new HttpErro("Valor inválido para '{$chave}'.", 400, [
+            $chave => 'Valores aceitos: ' . implode(', ', $permitidos),
+        ]);
+    }
+    return $valor;
 }
