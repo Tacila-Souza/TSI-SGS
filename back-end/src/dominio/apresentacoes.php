@@ -153,3 +153,79 @@ function carregar_apresentacao(
         'totalGrupos' => count($grupos)
     ];
 }
+
+function iniciar_apresentacao(
+    PDO $pdo,
+    int $professorId,
+    int $dataId
+): array {
+
+    // 1. Conferir a sessão e o dono dela
+
+    $sessao = buscar_sessao_do_professor(
+        $pdo,
+        $professorId,
+        $dataId
+    );
+
+    // 2. Se já está em andamento, só devolve os dados
+
+    if ($sessao['status'] === 'em_andamento') {
+        return carregar_apresentacao($pdo, $professorId, $dataId);
+    }
+
+    if ($sessao['status'] !== 'agendada') {
+        responder_erro(
+            'Esta sessão não pode ser iniciada.',
+            409
+        );
+    }
+
+    // 3. Precisa ter pelo menos um grupo
+
+    $consultaGrupos = $pdo->prepare(
+        'SELECT COUNT(*) FROM grupos WHERE seminario_data_id = ?'
+    );
+
+    $consultaGrupos->execute([$dataId]);
+
+    if ((int) $consultaGrupos->fetchColumn() === 0) {
+        responder_erro(
+            'Cadastre ao menos um grupo antes de iniciar.',
+            409
+        );
+    }
+
+    // 4. A chamada precisa ter sido registrada
+
+    $consultaPresentes = $pdo->prepare(
+        'SELECT COUNT(*)
+         FROM presencas
+         WHERE seminario_data_id = ?
+           AND presente = 1'
+    );
+
+    $consultaPresentes->execute([$dataId]);
+
+    if ((int) $consultaPresentes->fetchColumn() === 0) {
+        responder_erro(
+            'Registre a chamada antes de iniciar a apresentação.',
+            409
+        );
+    }
+
+    // 5. Mudar o status da sessão
+
+    $atualizar = $pdo->prepare(
+        'UPDATE seminario_datas
+         SET status = ?
+         WHERE id = ?
+           AND status = ?'
+    );
+
+    $atualizar->execute(['em_andamento', $dataId, 'agendada']);
+
+    // 6. Devolver a tela ao vivo atualizada
+
+    return carregar_apresentacao($pdo, $professorId, $dataId);
+}
