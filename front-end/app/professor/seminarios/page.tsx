@@ -1,10 +1,12 @@
+
 'use client'
 
 import * as React from 'react'
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
+import { Plus, Presentation } from 'lucide-react'
 import { useApp } from '@/lib/app-context'
-import type { SeminarioStatus } from '@/lib/types'
+import { professorService, toApiId } from '@/lib/services'
+import type { Seminario, SeminarioStatus } from '@/lib/types'
 import { statusSeminarioLabel } from '@/lib/format'
 import { PageHeader } from '@/components/page-header'
 import { SeminarioCard } from '@/components/seminario/seminario-card'
@@ -20,7 +22,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty'
-import { Presentation } from 'lucide-react'
 
 type Filtro = 'todos' | SeminarioStatus
 
@@ -33,10 +34,83 @@ const filtros: { value: Filtro; label: string }[] = [
 ]
 
 export default function SeminariosPage() {
-  const { currentUser, seminarios } = useApp()
+  const { currentUser } = useApp()
+
   const [filtro, setFiltro] = React.useState<Filtro>('todos')
-  const meus = seminarios.filter((s) => s.professorId === currentUser?.id)
-  const lista = filtro === 'todos' ? meus : meus.filter((s) => s.status === filtro)
+  const [seminarios, setSeminarios] = React.useState<Seminario[]>([])
+  const [carregando, setCarregando] = React.useState(true)
+  const [erro, setErro] = React.useState('')
+
+  const professorId = React.useMemo(() => {
+    const configurado = process.env.NEXT_PUBLIC_PROFESSOR_ID
+
+    if (configurado) {
+      const numero = Number(configurado)
+      if (Number.isInteger(numero) && numero > 0) {
+        return numero
+      }
+    }
+
+    if (!currentUser?.id) return null
+
+    try {
+      return toApiId(currentUser.id)
+    } catch {
+      return null
+    }
+  }, [currentUser?.id])
+
+  React.useEffect(() => {
+    if (professorId === null) {
+      if (currentUser) {
+        setErro('Não foi possível identificar o professor.')
+        setCarregando(false)
+      }
+      return
+    }
+
+    let ativo = true
+
+    async function carregarSeminarios() {
+      setCarregando(true)
+      setErro('')
+
+      try {
+        const lista = await professorService.listarSeminarios(
+          professorId as number
+        )
+
+        if (ativo) {
+          setSeminarios(lista)
+        }
+      } catch (error) {
+        if (ativo) {
+          setErro(
+            error instanceof Error
+              ? error.message
+              : 'Não foi possível carregar os seminários.'
+          )
+        }
+      } finally {
+        if (ativo) {
+          setCarregando(false)
+        }
+      }
+    }
+
+    void carregarSeminarios()
+
+    return () => {
+      ativo = false
+    }
+  }, [professorId, currentUser])
+
+  // A API já retorna somente os seminários do professor.
+  const lista = filtro === 'todos'
+    ? seminarios
+    : seminarios.filter(
+        (seminario) => seminario.status === filtro
+      )
 
   return (
     <>
@@ -65,17 +139,39 @@ export default function SeminariosPage() {
         ))}
       </ToggleGroup>
 
-      {lista.length === 0 ? (
+      {carregando ? (
+        <p className="py-8 text-sm text-muted-foreground">
+          Carregando seminários...
+        </p>
+      ) : erro ? (
+        <div
+          role="alert"
+          className="rounded-lg border p-4 text-sm text-destructive"
+        >
+          {erro}
+        </div>
+      ) : lista.length === 0 ? (
         <Empty className="py-12">
           <EmptyMedia variant="icon">
             <Presentation />
           </EmptyMedia>
-          <EmptyTitle>{meus.length === 0 ? 'Nenhum seminário cadastrado' : 'Nenhum seminário neste status'}</EmptyTitle>
+
+          <EmptyTitle>
+            {seminarios.length === 0
+              ? 'Nenhum seminário cadastrado'
+              : 'Nenhum seminário neste status'}
+          </EmptyTitle>
+
           <EmptyDescription>
-            {meus.length === 0 ? 'Nenhum seminário cadastrado no banco de dados.' : 'Não há seminários com esse status no momento.'}
+            {seminarios.length === 0
+              ? 'Nenhum seminário cadastrado no banco de dados.'
+              : 'Não há seminários com esse status no momento.'}
           </EmptyDescription>
+
           <EmptyContent>
-            <Button render={<Link href="/professor/seminarios/novo" />}>
+            <Button
+              render={<Link href="/professor/seminarios/novo" />}
+            >
               <Plus data-icon="inline-start" />
               Criar seminário
             </Button>
@@ -83,12 +179,15 @@ export default function SeminariosPage() {
         </Empty>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {lista.map((s) => (
-            <SeminarioCard key={s.id} seminario={s} basePath="/professor/seminarios" />
+          {lista.map((seminario) => (
+            <SeminarioCard
+              key={seminario.id}
+              seminario={seminario}
+              basePath="/professor/seminarios"
+            />
           ))}
         </div>
       )}
-
     </>
   )
 }
