@@ -14,6 +14,8 @@ function buscar_sessao_do_professor(
         'SELECT
             sd.id,
             sd.status,
+            sd.data_apresentacao,
+            s.id AS seminario_id,
             s.disciplina_id,
             s.professor_id
          FROM seminario_datas sd
