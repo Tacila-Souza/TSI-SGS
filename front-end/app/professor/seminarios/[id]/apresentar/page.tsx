@@ -120,11 +120,26 @@ const carregar = React.useCallback(async () => {
   const primeiroGrupo = grupos.slice().sort((a, b) => (a.ordem_apresentacao ?? 99) - (b.ordem_apresentacao ?? 99))[0]
   const grupoAtual = grupos.find((grupo) => grupo.id === grupoSelecionado) ?? primeiroGrupo
 
-  React.useEffect(() => {
-    if (!grupoAtual || grupoSelecionado !== null) return
-    setGrupoSelecionado(grupoAtual.id)
-    selectLiveGroup(id, `g-${grupoAtual.id}`)
-  }, [grupoAtual, grupoSelecionado, id, selectLiveGroup])
+
+React.useEffect(() => {
+  if (!grupoAtual || !seminario || grupoSelecionado !== null) {
+    return
+  }
+
+  setGrupoSelecionado(grupoAtual.id)
+
+  selectLiveGroup(
+    id,
+    `g-${grupoAtual.id}`,
+    seminario.tempoApresentacaoMin
+  )
+}, [
+  grupoAtual,
+  grupoSelecionado,
+  id,
+  selectLiveGroup,
+  seminario,
+])
 
   React.useEffect(() => {
     if (!grupoAtual) return
@@ -193,9 +208,16 @@ if (erroCarregamento) {
   }
 
   function selecionarGrupo(grupoId: number) {
-    setGrupoSelecionado(grupoId)
-    selectLiveGroup(id, `g-${grupoId}`)
-  }
+  if (!seminario) return
+
+  setGrupoSelecionado(grupoId)
+
+  selectLiveGroup(
+    id,
+    `g-${grupoId}`,
+    seminario.tempoApresentacaoMin
+  )
+}
 
   async function salvarAvaliacao() {
     if (!grupoAtual) return
@@ -322,10 +344,22 @@ async function concluirSessao() {
               <LiveTimer
                 live={live}
                 canStart={grupos.length > 0}
-                onStart={() => {
-                  if (!chamadaRealizada) { setShowAttendanceAlert(true); return }
-                  if (grupoAtual) startLive(id, `g-${grupoAtual.id}`)
-                }}
+                
+onStart={() => {
+  if (!chamadaRealizada) {
+    setShowAttendanceAlert(true)
+    return
+  }
+
+  if (grupoAtual) {
+    startLive(
+      id,
+      `g-${grupoAtual.id}`,
+      seminario.tempoApresentacaoMin
+    )
+  }
+}}
+
                 onPause={pauseLive}
                 onResume={resumeLive}
                 onReset={resetLive}

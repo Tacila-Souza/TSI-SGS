@@ -33,11 +33,21 @@ export default function ProfessorSeminarioDetalhePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const professorId = React.useMemo(() => {
-    const configurado = process.env.NEXT_PUBLIC_PROFESSOR_ID
-    if (configurado) return Number(configurado)
-    return 1
-  }, [])
+  
+const { currentUser, carregandoPerfil } = useApp()
+
+const professorId = React.useMemo(() => {
+  if (currentUser?.role !== 'professor') {
+    return 0
+  }
+
+  try {
+    return toApiId(currentUser.id)
+  } catch {
+    return 0
+  }
+}, [currentUser?.id, currentUser?.role])
+
 
   const [seminario, setSeminario] = React.useState<Seminario | null>(null)
   const [alunos, setAlunos] = React.useState<User[]>([])
@@ -61,8 +71,13 @@ export default function ProfessorSeminarioDetalhePage() {
   const sessao = sessoes.find((item) => item.data === dataSelecionada) ?? sessoes[0]
   const resultadosDisponiveis = sessao?.status === 'finalizado'
 
-  const carregar = React.useCallback(async () => {
-    setCarregando(true)
+  
+const carregar = React.useCallback(async () => {
+  if (carregandoPerfil || professorId === 0) {
+    return
+  }
+  setCarregando(true)
+
     try {
       const carregado = await professorService.detalhesSeminario(professorId, id)
       setSeminario(carregado)
@@ -79,7 +94,7 @@ export default function ProfessorSeminarioDetalhePage() {
     } finally {
       setCarregando(false)
     }
-  }, [professorId, id, searchParams])
+}, [carregandoPerfil, professorId, id, searchParams])
 
   React.useEffect(() => { void carregar() }, [carregar])
 

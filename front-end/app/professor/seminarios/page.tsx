@@ -118,7 +118,7 @@ export default function SeminariosPage() {
         title="Seminários"
         description="Todos os seminários que você criou, organizados por status."
       >
-        <Button render={<Link href="/professor/seminarios/novo" />}>
+        <Button nativeButton={false} render={<Link href="/professor/seminarios/novo" />}>
           <Plus data-icon="inline-start" />
           Novo seminário
         </Button>
