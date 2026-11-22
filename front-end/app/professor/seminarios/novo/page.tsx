@@ -106,13 +106,14 @@ export default function NovoSeminarioPage() {
         setTempo(String(seminario.tempoApresentacaoMin))
         setPesoProfessor(String(Math.round(seminario.pesoProfessor * 100)))
         setPesoPares(String(Math.round((1 - seminario.pesoProfessor) * 100)))
-        setDatas((seminario.sessoes ?? [
-          { data: seminario.data, horario: seminario.horario, grupos: [], presenca: {}, status: 'agendado' as const },
-        ]).map((sessao, index) => ({
-          key: `data-edit-${sessao.data}-${index}`,
-          data: sessao.data,
-          horario: sessao.horario ?? '19:00',
-        })))
+       setDatas(
+       (seminario.sessoes ?? []).map((sessao, index) => ({
+       key: `data-edit-${sessao.id}-${index}`,
+       id: sessao.id == null ? undefined : toApiId(sessao.id),
+       data: sessao.data,
+       horario: sessao.horario ?? '19:00',
+     }))
+)
         setCriterios(seminario.criterios.map((criterio) => ({
           key: `criterio-edit-${criterio.id}`,
           id: toApiId(criterio.id),

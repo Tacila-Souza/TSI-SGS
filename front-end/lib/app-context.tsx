@@ -69,9 +69,9 @@ function mensagemErro(erro: unknown): string {
 }
 
 const initialLive: LiveState = {
-  seminarioId: 's-live',
-  grupoId: 'gl-1',
-  status: 'em_andamento',
+  seminarioId: '',
+  grupoId: '',
+  status: 'aguardando',
   running: false,
   durationSec: 15 * 60,
   remainingSec: 15 * 60,

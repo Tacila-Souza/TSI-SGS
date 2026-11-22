@@ -166,7 +166,11 @@ export function AppShell({
   }
 
   const config = navByRole[role]
-  const liveActive = Boolean(live.seminarioId && live.status === 'em_andamento')
+  const liveActive = Boolean(
+    live.seminarioId &&
+    /^s-\d+$/.test(live.seminarioId) &&
+    live.status === 'em_andamento'
+  )
   const liveHref =
     role === 'professor'
       ? `/professor/seminarios/${live.seminarioId}/apresentar`
