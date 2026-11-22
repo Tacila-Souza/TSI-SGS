@@ -18,5 +18,6 @@ require_once __DIR__ . '/dominio/grupos.php';
 require_once __DIR__ . '/dominio/presencas.php';
 require_once __DIR__ . '/dominio/avaliacao.php';
 require_once __DIR__ . '/dominio/resultados.php';
+require_once __DIR__ . '/dominio/elegibilidade.php';
 
 registrar_tratamento_erros();
