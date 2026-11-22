@@ -159,12 +159,3 @@ function serializar_seminario(array $r): array
         'sessoes' => $sessoes,
     ];
 }
-
-function serializar_presenca(array $r): array
-{
-    return [
-        'alunoId' => (int) $r['aluno_id'],
-        'nome' => (string) $r['nome_completo'],
-        'presente' => (bool) (int) $r['presente'],
-    ];
-}
