@@ -108,7 +108,7 @@ export function ResultadoView({ resultado }: { resultado: ResultadoDTO }) {
                 <span className="text-lg font-semibold">{fmt(grupo.mediaGeral)}</span>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
-                <div><p className="text-xs text-muted-foreground">Professor · peso {Math.round(resultado.pesoProfessor * 100)}%</p><p className="font-medium">{fmt(grupo.notaProfessor)}</p><Progress value={grupo.notaProfessor * 10} /></div>
+                <div><p className="text-xs text-muted-foreground">{resultado.pesoProfessor != null ? `Professor · peso ${Math.round(resultado.pesoProfessor * 100)}%` : 'Professor'}</p><p className="font-medium">{fmt(grupo.notaProfessor)}</p><Progress value={grupo.notaProfessor * 10} /></div>
                 <div><p className="text-xs text-muted-foreground">Pares</p><p className="font-medium">{fmt(grupo.notaAlunos)}</p><Progress value={grupo.notaAlunos * 10} /></div>
                 <div><p className="text-xs text-muted-foreground">Avaliadores</p><p className="font-medium">{grupo.avaliadoresConsiderados}</p></div>
               </div>

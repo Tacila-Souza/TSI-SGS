@@ -12,11 +12,17 @@ if ($seminarioId === null) {
     responder_erro('O parâmetro id é obrigatório.', 400);
 }
 
-$seminario = buscar_seminario($pdo, $seminarioId);
-if ($seminario === null) {
-    responder_erro('Seminário não encontrado.', 404);
+// listar_seminarios_aluno já filtra pela matrícula e carrega os detalhes da sessão.
+$seminario = null;
+foreach (listar_seminarios_aluno($pdo, $alunoId) as $item) {
+    if ((int) $item['id'] === $seminarioId) {
+        $seminario = $item;
+        break;
+    }
 }
 
-validar_matricula_seminario($pdo, $alunoId, $seminarioId);
+if ($seminario === null) {
+    responder_erro('Seminário não encontrado para este aluno.', 404);
+}
 
 responder_sucesso(serializar_seminario($seminario));

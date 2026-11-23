@@ -1,47 +1,55 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Validação de método, leitura do corpo JSON e parâmetros da query string.
- * A query string segue a convenção snake_case (contrato, seção 4).
- */
-function exigir_metodo(string $metodo): void
+function exigir_metodo(string ...$metodos): void
 {
-    if (($_SERVER['REQUEST_METHOD'] ?? '') !== $metodo) {
-        responder_erro('Método HTTP não permitido para esta operação.', 400);
+    $atual = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+    $aceitos = array_map('strtoupper', $metodos);
+
+    if (!in_array($atual, $aceitos, true)) {
+        responder_erro('Método HTTP não permitido.', 405);
     }
 }
 
 function ler_json(): array
 {
-    $corpo = file_get_contents('php://input');
-    if ($corpo === false || trim($corpo) === '') {
-        responder_erro('Corpo JSON obrigatório.', 400);
+    $bruto = file_get_contents('php://input');
+    if ($bruto === false || trim($bruto) === '') {
+        return [];
     }
 
-    $dados = json_decode($corpo, true);
-    if (json_last_error() !== JSON_ERROR_NONE || !is_array($dados)) {
-        responder_erro('JSON inválido.', 400);
+    try {
+        $dados = json_decode($bruto, true, 512, JSON_THROW_ON_ERROR);
+    } catch (JsonException) {
+        responder_erro('Corpo da requisição não é um JSON válido.', 400);
+    }
+
+    if (!is_array($dados)) {
+        responder_erro('O corpo da requisição deve ser um objeto JSON.', 400);
     }
 
     return $dados;
 }
 
-function inteiro_da_query(string $chave, bool $obrigatorio = true): ?int
+function query_int(string $chave, ?int $padrao = null): ?int
 {
-    $valor = $_GET[$chave] ?? null;
-
-    if ($valor === null || $valor === '') {
-        if ($obrigatorio) {
-            responder_erro("O parâmetro '{$chave}' é obrigatório.", 400);
-        }
-        return null;
+    if (!isset($_GET[$chave]) || $_GET[$chave] === '') {
+        return $padrao;
     }
 
-    $texto = (string) $valor;
-    if (!ctype_digit($texto) || (int) $texto <= 0) {
-        responder_erro("O parâmetro '{$chave}' é inválido.", 400);
+    $valor = filter_var($_GET[$chave], FILTER_VALIDATE_INT);
+    if ($valor === false || $valor <= 0) {
+        responder_erro("Parâmetro '{$chave}' deve ser um inteiro positivo.", 400);
     }
 
-    return (int) $texto;
+    return $valor;
+}
+
+function query_texto(string $chave, string $padrao = ''): string
+{
+    if (!isset($_GET[$chave])) {
+        return $padrao;
+    }
+
+    return trim((string) $_GET[$chave]);
 }

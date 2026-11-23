@@ -477,7 +477,7 @@ Usado por `/api/professor/resultados/compilar.php` e `/api/aluno/resultados/comp
 | Campo | Tipo | Observação |
 | --- | --- | --- |
 | `semAvaliadores` | boolean | `true` quando `n = 0`; o backend aplica `P_s = T_s`. |
-| `pesoProfessor`, `pesoAlunos` | number | Pesos configurados no seminário, de `0` a `1`, para os rótulos da tela de resultados. |
+| `pesoProfessor`, `pesoAlunos` | number (opcional) | Pesos configurados no seminário, de `0` a `1`, para os rótulos da tela de resultados. Podem não existir em versões antigas do compilador; a UI nesse caso mostra apenas "Professor". |
 | `criterios` | `CriterioDTO[]` | Rubrica criada pelo professor: nome, peso e tipo de cada critério. |
 | `ranking` | array | Ordenado por `mediaGeral` decrescente. |
 | `mediaGeral` | number | Média aritmética das notas finais dos integrantes. |
@@ -485,7 +485,7 @@ Usado por `/api/professor/resultados/compilar.php` e `/api/aluno/resultados/comp
 | `notaAlunos` | number | `P_s`; quando `n = 0`, o backend aplica `P_s = T_s` e marca `semAvaliadores`. |
 | `avaliadoresConsiderados` | number | `n` usado no cálculo. |
 | `integrantes` | array | Notas individuais. |
-| `notasProfessorPorCriterio` | array | Par `criterioId`/`nota` na ordem de `criterios`; critério individual usa a média entre os integrantes. `nota` é `null` quando não há nota do professor. No perfil aluno, o array é vazio nos grupos dos quais ele não participa (DP-036). |
+| `notasProfessorPorCriterio` | array (opcional) | Par `criterioId`/`nota` na ordem de `criterios`; critério individual usa a média entre os integrantes. `nota` é `null` quando não há nota do professor. No perfil aluno, o array é vazio nos grupos dos quais ele não participa (DP-036). Quando ausente, a UI mostra "—" para cada critério. |
 | `feedbacks` | array | Feedbacks coletados, de `professor` e de `par`, com `tipo`, `avaliadorId` e `avaliadorNome`; a UI separa os dois tipos. Respeita a privacidade do aluno (DP-036). |
 
 ### 7.11. `ApresentacaoDTO`
@@ -579,7 +579,7 @@ Resposta de `GET /api/aluno/avaliacoes/formulario.php` e de `POST /api/aluno/ava
 | --- | --- | --- |
 | `criterios` | `CriterioDTO[]` | Critérios do seminário, em camelCase (seção 7.5). |
 | `grupos` | `GrupoDTO[]` | Somente grupos **elegíveis**: o aluno não é integrante, o grupo não está `avaliado` e possui ao menos um integrante. |
-| `grupos[].integrantes` | array | Nomes dos integrantes (`{ alunoId, nome }`) para os critérios individuais do formulário; acompanha `integrantesIds`. |
+| `grupos[].integrantes` | array (opcional) | Nomes dos integrantes (`{ alunoId, nome }`) para os critérios individuais do formulário; acompanha `integrantesIds`. Quando ausente, a UI usa `Aluno {id}` como rótulo. |
 | `minhasAvaliacoes` | array | Avaliações já salvas **por este aluno** na sessão, agrupadas por `grupoId`; serve para reidratar o formulário ao trocar de grupo. |
 | `minhasAvaliacoes[].notas` | array | Mesmo formato das notas de `AvaliacaoDTO` (seção 7.9). |
 | `minhasAvaliacoes[].feedback` | string | Feedback do aluno para o grupo; `""` quando ainda não houver texto. |
@@ -749,7 +749,7 @@ Resposta de `GET /api/aluno/avaliacoes/formulario.php` e de `POST /api/aluno/ava
 ```
 
 - Resposta de `GET /api/aluno/avaliacoes/formulario.php?aluno_id={id}&data_id={id}` e de `POST /api/aluno/avaliacoes/salvar.php?aluno_id={id}&data_id={id}&grupo_id={id}`: `FormularioAvaliacaoAlunoDTO` (seção 7.12).
-- Resposta de `GET /api/aluno/resultados/compilar.php?aluno_id={id}&data_id={id}`: `ResultadoDTO` (seção 7.10) com privacidade — `integrantes` e `notasProfessorPorCriterio` vazios e sem feedbacks de pares nos grupos que não são do aluno (DP-036).
+- Resposta de `GET /api/aluno/resultados/compilar.php?aluno_id={id}&data_id={id}`: `ResultadoDTO` (seção 7.10) com privacidade — `integrantes` e `notasProfessorPorCriterio` (quando presentes) vazios e sem feedbacks de pares nos grupos que não são do aluno (DP-036).
 
 ## 9. Integração no frontend
 
@@ -783,7 +783,7 @@ Regras:
 - Na montagem, hidrata usuários, seminários, turmas e avaliações a partir da API.
 - As mutações podem ser otimistas para manter a UI responsiva, com rollback/toast em erro.
 - O estado `live` (cronômetro) continua local; o backend persiste apenas o status da sessão.
-- `ResultadoView` consome diretamente o `ResultadoDTO` da API; nenhum cálculo é feito no React. Ele exibe os critérios da rubrica e as notas do professor por critério a partir de `criterios` e `notasProfessorPorCriterio`. O componente antigo `ResultsView` (que esperava `Seminario` + `Avaliacao[]` e lia mocks) foi removido.
+- `ResultadoView` consome diretamente o `ResultadoDTO` da API; nenhum cálculo é feito no React. Ele exibe os critérios da rubrica e, quando disponível, as notas do professor por critério a partir de `criterios` e `notasProfessorPorCriterio`. O componente antigo `ResultsView` (que esperava `Seminario` + `Avaliacao[]` e lia mocks) foi removido.
 
 ### 9.3. O que não fazer no frontend
 
@@ -808,7 +808,7 @@ Esta tabela é o índice único entre endpoint, DTO e consumidor no frontend. Em
 | `/api/professor/apresentacao/encerrar.php` | POST | `{ dataId, status: "finalizado", gruposPendentes }` | `professor.ts` → tela ao vivo |
 | `/api/professor/resultados/compilar.php` | GET | `ResultadoDTO` (7.10) | `professor.ts` → `ResultadoView` |
 | `/api/aluno/seminarios/{listar,detalhes}.php` | GET | `SeminarioDTO` / `SeminarioDTO[]` | `aluno.ts` → dashboard, listagem e detalhes |
-| `/api/aluno/avaliacoes/{formulario,salvar}.php` | GET/POST | `FormularioAvaliacaoAlunoDTO` (7.12), com `grupos[].integrantes` para os critérios individuais | `aluno.ts` → `/aluno/seminarios/[id]/ao-vivo` |
+| `/api/aluno/avaliacoes/{formulario,salvar}.php` | GET/POST | `FormularioAvaliacaoAlunoDTO` (7.12), com `grupos[].integrantes` opcional para os critérios individuais | `aluno.ts` → `/aluno/seminarios/[id]/ao-vivo` |
 | `/api/aluno/resultados/compilar.php` | GET | `ResultadoDTO` (7.10) com critérios, notas do professor por critério e privacidade (DP-036) | `aluno.ts` → detalhes e `/aluno/resultados` |
 
 Regras de manutenção:

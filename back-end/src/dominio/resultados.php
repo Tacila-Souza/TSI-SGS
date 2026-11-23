@@ -93,37 +93,13 @@ function compilar_resultados(PDO $pdo, int $dataId, ?int $alunoId = null): array
             $notaPorCriterioProfessor[$chave] = (float) $nota['nota'];
         }
 
-        // Notas do professor por critério, no mesmo formato da rubrica usada para criar o seminário.
-        // Em critérios individuais, a nota exibida é a média entre os integrantes do grupo.
-        $notasProfessorPorCriterio = [];
-        foreach ($criterios as $criterio) {
-            $criterioId = (int) $criterio['id'];
-            if ($criterio['tipo_avaliacao'] === 'grupo') {
-                $nota = $notaPorCriterioProfessor[$criterioId . ':0'] ?? null;
-            } else {
-                $valores = [];
-                foreach ($integrantes as $alunoIntegrante) {
-                    $chave = $criterioId . ':' . (int) $alunoIntegrante['id'];
-                    if (array_key_exists($chave, $notaPorCriterioProfessor)) {
-                        $valores[] = $notaPorCriterioProfessor[$chave];
-                    }
-                }
-                $nota = $valores !== [] ? array_sum($valores) / count($valores) : null;
-            }
-            $notasProfessorPorCriterio[] = [
-                'criterioId' => $criterioId,
-                'nota' => $nota !== null ? round($nota, 2) : null,
-            ];
-        }
-
         $integrantesResultado = [];
         $somaMedia = 0.0;
         $somaNotaProfessor = 0.0;
         $somaNotaAlunos = 0.0;
 
         foreach ($integrantes as $aluno) {
-            // $alunoId identifica quem consulta os resultados e não pode ser sobrescrito.
-            $integranteId = (int) $aluno['id'];
+            $alunoId = (int) $aluno['id'];
 
             $notaProfessor = 0.0;
             foreach ($criterios as $criterio) {
@@ -131,7 +107,7 @@ function compilar_resultados(PDO $pdo, int $dataId, ?int $alunoId = null): array
                 if ($criterio['tipo_avaliacao'] === 'grupo') {
                     $valor = $notaPorCriterioProfessor[$criterioId . ':0'] ?? 0.0;
                 } else {
-                    $valor = $notaPorCriterioProfessor[$criterioId . ':' . $integranteId] ?? 0.0;
+                    $valor = $notaPorCriterioProfessor[$criterioId . ':' . $alunoId] ?? 0.0;
                 }
                 $notaProfessor += $valor * (int) $criterio['peso_criterio'];
             }
@@ -142,7 +118,7 @@ function compilar_resultados(PDO $pdo, int $dataId, ?int $alunoId = null): array
                 $notaAvaliador = 0.0;
                 foreach ($criterios as $criterio) {
                     $criterioId = (int) $criterio['id'];
-                    $alvo = $criterio['tipo_avaliacao'] === 'grupo' ? 0 : $integranteId;
+                    $alvo = $criterio['tipo_avaliacao'] === 'grupo' ? 0 : $alunoId;
                     foreach ($paresGrupo as $nota) {
                         if ((int) $nota['avaliador_id'] === $avaliador
                             && (int) $nota['criterio_id'] === $criterioId
@@ -165,7 +141,7 @@ function compilar_resultados(PDO $pdo, int $dataId, ?int $alunoId = null): array
             $somaMedia += $notaFinal;
 
             $integrantesResultado[] = [
-                'alunoId' => $integranteId,
+                'alunoId' => $alunoId,
                 'nome' => (string) $aluno['nome_completo'],
                 'notaProfessor' => round($notaProfessor, 2),
                 'notaAlunos' => round($notaAlunos, 2),
@@ -184,7 +160,6 @@ function compilar_resultados(PDO $pdo, int $dataId, ?int $alunoId = null): array
             'notaAlunos' => round($somaNotaAlunos / $quantidade, 2),
             'avaliadoresConsiderados' => count($avaliadores),
             'integrantes' => $integrantesResultado,
-            'notasProfessorPorCriterio' => $notasProfessorPorCriterio,
         ];
         $ranking[] = $grupo;
 
@@ -220,7 +195,6 @@ function compilar_resultados(PDO $pdo, int $dataId, ?int $alunoId = null): array
             }
             if (!$pertence) {
                 $item['integrantes'] = [];
-                $item['notasProfessorPorCriterio'] = [];
             }
         }
     }
@@ -231,8 +205,6 @@ function compilar_resultados(PDO $pdo, int $dataId, ?int $alunoId = null): array
         'dataId' => $dataId,
         'dataSessao' => (string) $data['data_apresentacao'],
         'semAvaliadores' => $semAvaliadores,
-        'pesoProfessor' => round($pesoProfessor / 100, 2),
-        'pesoAlunos' => round($pesoAlunos / 100, 2),
         'criterios' => $criteriosApi,
         'ranking' => $ranking,
         'feedbacks' => $todosFeedbacks,

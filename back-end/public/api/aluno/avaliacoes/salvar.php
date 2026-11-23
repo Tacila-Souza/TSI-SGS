@@ -4,12 +4,21 @@ declare(strict_types=1);
 require dirname(__DIR__, 4) . '/src/bootstrap.php';
 
 exigir_metodo('POST');
+
 $alunoId = exigir_identidade('aluno');
-$dataId = inteiro_da_query('data_id');
-$grupoId = inteiro_da_query('grupo_id');
+$dataId = query_int('data_id');
+$grupoId = query_int('grupo_id');
 
-$corpo = ler_json();
-$notas = validar_notas($corpo['notas'] ?? null);
-$feedback = validar_feedback($corpo['feedback'] ?? null);
+if ($dataId === null) {
+    responder_erro('O parâmetro data_id é obrigatório.', 400);
+}
 
-responder_sucesso(salvar_avaliacao_aluno($pdo, $alunoId, $dataId, $grupoId, $notas, $feedback));
+if ($grupoId === null) {
+    responder_erro('O parâmetro grupo_id é obrigatório.', 400);
+}
+
+$dados = ler_json();
+
+$formulario = salvar_avaliacao_aluno($pdo, $alunoId, $dataId, $grupoId, $dados);
+
+responder_sucesso($formulario, 200, 'Avaliação salva com sucesso.');

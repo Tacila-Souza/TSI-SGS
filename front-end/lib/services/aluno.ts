@@ -27,7 +27,7 @@ export interface FormularioAvaliacao {
     nome: string
     tema: string
     integrantesIds: number[]
-    integrantes: Array<{ alunoId: number; nome: string }>
+    integrantes?: Array<{ alunoId: number; nome: string }>
     ordem: number
   }>
   minhasAvaliacoes: Array<{
