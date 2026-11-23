@@ -2,7 +2,7 @@
 
 > **Modelo aprovado: híbrido.** O projeto continua com PHP puro, PDO e prepared statements. CRUD simples pode ter SQL no próprio endpoint; fluxos complexos ficam em `src/dominio/`; consultas compartilhadas podem ir para `src/consultas/`; a conversão para DTO fica em `src/contrato/`.
 >
-> **Leia antes:** `docs/README.md`, `docs/documentacao_de_contextualizacao_tecnica.md` e `docs/contrato_api_frontend.md`.
+> **Leia antes:** `README.md`, `docs/documentacao_de_contextualizacao_tecnica.md` e `docs/contrato_api_frontend.md`.
 >
 > **Atenção:** os exemplos de formulário HTML com `header('Location: ...')` no final deste arquivo são didáticos e **não** devem ser usados nos endpoints da API JSON.
 

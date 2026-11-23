@@ -23,9 +23,9 @@ A aplicação é dividida em:
 | --- | --- |
 | Documentação | Consolidada e amarrada: este guia, o documento técnico (seções 6.3.21 e 6.3.22), o contrato JSON (seções 7.11, 7.12 e 9.4), os padrões PHP e as specs formam a base de implementação. |
 | Banco de dados | Os 3 scripts oficiais estão em `/database`; o banco local de referência foi validado em MySQL 8.0.44. Cada integrante deve aplicá-los no seu ambiente (ver §4.3). |
-| Backend | Infraestrutura em `back-end/src/`, **19 endpoints admin**, **19 endpoints do professor** e **5 endpoints do aluno** implementados em `back-end/public/api/`. Faltam 2 rotas do catálogo 6.3.7: `apresentacao/iniciar.php` e `grupos/sincronizar.php` (ver §9). |
+| Backend | Infraestrutura em `back-end/src/`, **19 endpoints admin**, **21 endpoints do professor** e **5 endpoints do aluno** implementados em `back-end/public/api/`. Todas as rotas do catálogo 6.3.7 estão disponíveis. |
 | Frontend | Projeto Next.js completo em `/front-end`, com `lib/services/` já integrado (`admin.ts`, `professor.ts`, `aluno.ts`, `api.ts`, `mappers.ts`). `mock-data.ts` é apenas legado. |
-| Integração | Admin, aluno e professor consomem a API via `lib/services`; as duas rotas pendentes do catálogo não são chamadas pelo service atual. |
+| Integração | Admin, aluno e professor consomem a API via `lib/services`; `apresentacao/iniciar.php` e `grupos/sincronizar.php` estão disponíveis para uso futuro do service do professor. |
 
 **Consequência prática:** implemente o PHP seguindo **contrato → catálogo 6.3.7 → DDL oficial → spec da funcionalidade**. Os services do frontend são a referência viva do formato que a UI espera; o índice único endpoint → DTO → tela está no contrato, seção **9.4**.
 
@@ -88,7 +88,7 @@ Arquivos de referência na raiz das pastas:
 
 | Arquivo | Para que serve |
 | --- | --- |
-| `docs/README.md` | Este guia: estado, regras, pré-requisitos e comandos. |
+| `README.md` | Este guia: estado, regras, pré-requisitos e comandos. |
 | `docs/documentacao_de_contextualizacao_tecnica.md` | Arquitetura, catálogo de endpoints (6.3.7), amarração de respostas (6.3.21) e estado de handoff (6.3.22). |
 | `docs/contrato_api_frontend.md` | DTOs, payloads, enums e a tabela única endpoint → DTO → tela (seção 9.4). |
 | `docs/padroes_de_codigo_php.md` | Modelo híbrido de código PHP e convenções da API. |
@@ -133,7 +133,7 @@ cp back-end/.env.example back-end/.env
 Copy-Item back-end/.env.example back-end/.env
 ```
 
-Ajuste `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` e `APP_ORIGIN` em `back-end/.env`. Em seguida, **a partir da raiz do projeto**:
+Ajuste `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` e `APP_ORIGIN` em `back-end/.env`. A porta do MySQL varia por ambiente (o padrão do modelo é `3306`; nesta máquina de referência é `3308`) — confirme com `mysql -u root -p -e "SHOW VARIABLES LIKE 'port';"` antes de subir a API. Um `DB_PORT` errado gera `SQLSTATE[HY000] [2002] Connection refused` em todos os endpoints. Em seguida, **a partir da raiz do projeto**:
 
 ```bash
 php -S localhost:8000 -t back-end/public
@@ -150,15 +150,17 @@ curl "http://localhost:8000/api/admin/alunos/listar.php"
 ```bash
 cd front-end
 cp .env.example .env.local
-npm install
-npm run dev
+corepack enable
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
-Acesse `http://localhost:3000`. Checagens úteis:
+O gerenciador canônico é **pnpm** (`packageManager: pnpm@12.3.4`); não versionar `package-lock.json`. Acesse `http://localhost:3000`. Checagens úteis:
 
 ```bash
-npx tsc --noEmit
-npm run build
+pnpm typecheck
+pnpm build
+./scripts/smoke-api.sh   # na raiz do projeto, com a API e o MySQL no ar
 ```
 
 ### 4.4. Amarração dos formatos de resposta
@@ -178,7 +180,7 @@ Os formatos que antes ficavam implícitos nas specs estão agora definidos e ama
 
 Antes de implementar qualquer coisa, leia nesta ordem:
 
-1. **`docs/README.md`** — este guia.
+1. **`README.md`** — este guia.
 2. **`docs/documentacao_de_contextualizacao_tecnica.md`** — arquitetura, endpoints, segurança, transações e decisões.
 3. **`docs/contrato_api_frontend.md`** — formato dos DTOs, IDs, enums, datas e integração com o frontend; **comece pela seção 9.4** (endpoint → DTO → tela) e depois leia as seções 7.11 e 7.12.
 4. **`docs/padroes_de_codigo_php.md`** — como escrever o PHP no modelo híbrido.
@@ -233,7 +235,7 @@ Copie o bloco abaixo no início de uma sessão do OpenCode ou peça: **“Leia `
 ```text
 Você está no projeto SGS (sistema acadêmico de gestão de seminários).
 Antes de qualquer alteração, leia nesta ordem:
-1. docs/README.md
+1. README.md
 2. docs/documentacao_de_contextualizacao_tecnica.md
 3. docs/contrato_api_frontend.md
 4. docs/padroes_de_codigo_php.md
@@ -253,10 +255,10 @@ Regras obrigatórias:
 - Antes de criar ou alterar endpoint, atualize o contrato JSON e a seção 6.3.
 
 Estado atual:
-- /back-end com infraestrutura, 19 endpoints admin, 19 endpoints do professor e 5 endpoints do aluno; faltam apenas apresentacao/iniciar.php e grupos/sincronizar.php.
+- /back-end com infraestrutura, 19 endpoints admin, 21 endpoints do professor e 5 endpoints do aluno; catálogo 6.3.7 completo.
 - /front-end está completo, com `lib/services/` integrado; `mock-data.ts` é apenas legado.
 - /database e /docs estão prontos; o contrato (seções 7.11, 7.12 e 9.4) amarra os formatos de resposta.
-- A arquitetura aprovada é híbrida + contrato JSON; a ordem de trabalho está em docs/README.md §4.3 e na seção 6.3.22 do documento técnico.
+- A arquitetura aprovada é híbrida + contrato JSON; a ordem de trabalho está em README.md §4.3 e na seção 6.3.22 do documento técnico.
 
 Tarefa desta sessão:
 <descreva aqui a tarefa, o perfil e a spec relacionada>
@@ -272,11 +274,12 @@ Antes de codar, responda com:
 
 | Documento | Para que serve |
 | --- | --- |
-| `docs/README.md` | Visão geral, estado atual, regras e prompt inicial. |
+| `README.md` | Visão geral, estado atual, regras e prompt inicial. |
 | `docs/AGENTS.md` | Instruções padronizadas para OpenCode e outros agentes. |
 | `docs/documentacao_de_contextualizacao_tecnica.md` | Arquitetura, endpoints, segurança, transações e decisões DP-001 a DP-036. |
 | `docs/contrato_api_frontend.md` | DTOs, IDs, enums, datas, payloads, formatos de resposta (7.11/7.12) e amarração endpoint → DTO → tela (9.4). |
 | `docs/padroes_de_codigo_php.md` | Modelo híbrido de código PHP, exemplos e o que evitar. |
+| `docs/integracao_de_branches.md` | Branches divergentes, riscos de merge e estratégia de integração. |
 | `docs/especs/admin/` | Especificações de alunos, professores, cursos e disciplinas. |
 | `docs/especs/professor/` | Especificações das etapas 1, 2 e 3 do seminário. |
 | `docs/especs/aluno/` | Especificação do portal do aluno. |
@@ -304,7 +307,7 @@ O `DELIMITER $$` de `02_trigger_exclusividade.sql` é uma diretiva do cliente `m
 
 ## 9. Pendências e armadilhas conhecidas
 
-- **Duas rotas de professor pendentes:** a base tem infraestrutura, 19 endpoints admin, 19 endpoints do professor e 5 endpoints do aluno. Faltam apenas `/api/professor/apresentacao/iniciar.php` e `/api/professor/grupos/sincronizar.php` do catálogo 6.3.7; as funções de domínio correspondentes já existem. Sem `iniciar.php`, o professor não inicia sessões novas pela API, mas as sessões já em andamento e as demais rotas funcionam normalmente. Siga o catálogo e o índice do contrato, seção 9.4, ao implementá-las.
+- **Rotas de professor concluídas:** `/api/professor/apresentacao/iniciar.php` (POST, devolve `ApresentacaoDTO`) e `/api/professor/grupos/sincronizar.php` (PUT, devolve `GrupoDTO[]`) foram expostas a partir das funções de domínio existentes. A base tem 19 endpoints admin, 21 do professor e 5 do aluno. O `lib/services/professor.ts` ainda não chama essas duas rotas; ao fazê-lo, siga o catálogo 6.3.7 e o índice do contrato, seção 9.4.
 - **Frontend integrado, mas dependente da API:** as telas consomem `lib/services`; sempre que um endpoint ainda não existir, a tela correspondente falhará ao carregar.
 - **IDs diferentes:** o banco usa inteiros; o frontend usa strings prefixadas. A conversão é responsabilidade de `lib/services`.
 - **Nomes diferentes:** o banco usa `nome_completo`, `matricula`, `ano_matricula`, `cursos.sigla`; o frontend usa `nome`, `registro`, `anoMatricula`, `sigla`. O contrato define o de-para.
@@ -316,7 +319,7 @@ O `DELIMITER $$` de `02_trigger_exclusividade.sql` é uma diretiva do cliente `m
 - **Admin:** não existe tabela de administradores. O admin do MVP é a identidade fixa `u-coord`, sem registro no banco.
 - **Sessão cancelada:** o schema prevê `cancelada` em `seminario_datas`, mas a UI do MVP trabalha apenas com “agendado” e “finalizado”. Cancelamento está fora do escopo atual.
 - **Exclusão em lote:** o contrato prevê `POST .../excluir-lote.php` para alunos e professores, com validação prévia e transação única (DP-021).
-- **Atualização de grupos:** a UI substitui o array inteiro; contrato prevê `PUT /api/professor/grupos/sincronizar.php` com `{ "grupos": [{ "id": number|null, "tema": string, "integrantesIds": number[] }] }` (DP-023/DP-025).
+- **Atualização de grupos:** a UI substitui o array inteiro; `PUT /api/professor/grupos/sincronizar.php` com `{ "grupos": [{ "id": number|null, "tema": string, "integrantesIds": number[] }] }` está implementado (DP-023/DP-025).
 - **Rotas do aluno:** as rotas canônicas são `/aluno/seminarios/{id}/ao-vivo` e `/aluno/resultados`, alinhadas ao protótipo. As rotas `/avaliar` e `/resultados` por seminário são legado da spec e não existem na UI atual.
 
 ## 10. Critérios de conclusão de uma tarefa

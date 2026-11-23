@@ -1,6 +1,6 @@
 # Instruções para Agentes de IA — SGS
 
-> **Uso:** este arquivo é o contexto inicial padronizado para o OpenCode e outros agentes que forem trabalhar no SGS. Peça ao agente para ler este arquivo antes de qualquer alteração. Ele complementa `docs/README.md` e não substitui o documento técnico, o contrato JSON ou o schema oficial.
+> **Uso:** este arquivo é o contexto inicial padronizado para o OpenCode e outros agentes que forem trabalhar no SGS. Peça ao agente para ler este arquivo antes de qualquer alteração. Ele complementa `README.md` e não substitui o documento técnico, o contrato JSON ou o schema oficial.
 
 ## 1. Contexto do projeto
 
@@ -21,7 +21,7 @@ Arquitetura:
 
 Leia nesta ordem:
 
-1. `docs/README.md`
+1. `README.md`
 2. `docs/documentacao_de_contextualizacao_tecnica.md`
 3. `docs/contrato_api_frontend.md`
 4. `docs/padroes_de_codigo_php.md`
@@ -76,7 +76,7 @@ Se a tarefa for de frontend, leia também `front-end/lib/types.ts` e `front-end/
 - `seminario_criterios` não tem descrição; critério é nome, peso e tipo.
 - Cursos com disciplinas e disciplinas com seminários não podem ser excluídos; retornar `409 Conflict`.
 - Listagens filtram ativos por padrão; `?incluir_inativos=1` inclui inativos.
-- Aplicar os scripts na ordem `01` → `02` → `03` com o cliente `mysql`; `DELIMITER $$` não funciona em PDO. Ver `docs/README.md`, seção 8.1.
+- Aplicar os scripts na ordem `01` → `02` → `03` com o cliente `mysql`; `DELIMITER $$` não funciona em PDO. Ver `README.md`, seção 8.1.
 
 ### Backend
 
@@ -110,11 +110,12 @@ Se a tarefa for de frontend, leia também `front-end/lib/types.ts` e `front-end/
 
 ## 5. Estado atual
 
-- `/back-end` tem infraestrutura em `src/`, **19 endpoints admin**, **19 endpoints do professor** e **5 endpoints do aluno** em `public/api/`. Faltam apenas `apresentacao/iniciar.php` e `grupos/sincronizar.php` do catálogo 6.3.7.
+- `/back-end` tem infraestrutura em `src/`, **19 endpoints admin**, **21 endpoints do professor** e **5 endpoints do aluno** em `public/api/`. O catálogo 6.3.7 está completo, incluindo `apresentacao/iniciar.php` e `grupos/sincronizar.php`.
 - `/front-end` está completo, com `lib/services/` já integrado (`admin.ts`, `professor.ts`, `aluno.ts`, `api.ts`, `mappers.ts`); `mock-data.ts` é apenas legado.
-- `/database` contém os 3 scripts oficiais; o banco local de referência foi validado em MySQL 8.0.44. Cada pessoa aplica os scripts no seu ambiente conforme `docs/README.md` §4.3.
+- `/database` contém os 3 scripts oficiais; o banco local de referência foi validado em MySQL 8.0.44. Cada pessoa aplica os scripts no seu ambiente conforme `README.md` §4.3.
 - `/docs` está consolidado e amarrado: catálogo em 6.3.7, formatos em 6.3.21, estado de handoff em 6.3.22 e índice endpoint → DTO → tela no contrato, seção 9.4.
-- As duas rotas pendentes não são chamadas pelo `lib/services` atual; ao implementá-las, siga o catálogo 6.3.7 e a seção 9.4 do contrato.
+- `apresentacao/iniciar.php` e `grupos/sincronizar.php` estão expostas, mas ainda não são chamadas pelo `lib/services` atual; ao integrá-las à UI, siga o catálogo 6.3.7 e a seção 9.4 do contrato.
+- Antes de integrar qualquer branch, leia `docs/integracao_de_branches.md`: várias branches antigas divergem desta base e podem reintroduzir mocks ou duplicar regras de domínio.
 
 ## 6. Como trabalhar nesta base
 
@@ -146,7 +147,7 @@ Se a tarefa for de frontend, leia também `front-end/lib/types.ts` e `front-end/
 ```text
 Você está no projeto SGS (sistema acadêmico de gestão de seminários).
 Leia, nesta ordem:
-1. docs/README.md
+1. README.md
 2. docs/documentacao_de_contextualizacao_tecnica.md
 3. docs/contrato_api_frontend.md
 4. docs/padroes_de_codigo_php.md
@@ -165,10 +166,10 @@ Regras:
 - Chamadas HTTP novas do frontend ficam em lib/services.
 
 Estado atual:
-- /back-end com infraestrutura, 19 endpoints admin, 19 endpoints do professor e 5 endpoints do aluno; faltam apenas apresentacao/iniciar.php e grupos/sincronizar.php.
+- /back-end com infraestrutura, 19 endpoints admin, 21 endpoints do professor e 5 endpoints do aluno; catálogo 6.3.7 completo.
 - /front-end completo, com lib/services integrado; mock-data é apenas legado.
 - /database e /docs prontos; contrato 9.4 amarra endpoint → DTO → tela.
-- Ordem de trabalho: docs/README.md §4.3 e documento técnico 6.3.22.
+- Ordem de trabalho: README.md §4.3 e documento técnico 6.3.22.
 
 Tarefa desta sessão:
 <descreva a tarefa, o perfil e a spec relacionada>
@@ -207,7 +208,7 @@ Antes de codar, responda:
 
 | Assunto | Documento |
 | --- | --- |
-| Visão geral e estado atual | `docs/README.md` |
+| Visão geral e estado atual | `README.md` |
 | Arquitetura, endpoints e decisões | `docs/documentacao_de_contextualizacao_tecnica.md` |
 | Formato dos dados da API e amarração endpoint → DTO → tela | `docs/contrato_api_frontend.md` (7.11, 7.12, 9.4) |
 | Modelo de código PHP | `docs/padroes_de_codigo_php.md` |

@@ -1,5 +1,5 @@
 > **Status:** especificação funcional de referência.
-> **Leia antes:** `docs/README.md`, `docs/documentacao_de_contextualizacao_tecnica.md` e `docs/contrato_api_frontend.md`.
+> **Leia antes:** `README.md`, `docs/documentacao_de_contextualizacao_tecnica.md` e `docs/contrato_api_frontend.md`.
 > **Fonte de verdade:** schema oficial em `/database`; catálogo de endpoints na seção 6.3; contrato JSON no documento de contrato. Os blocos SQL deste arquivo são ilustrativos e não devem ser copiados.
 
 # **ESPECIFICAÇÃO TÉCNICA: GERENCIAMENTO DE ALUNOS**

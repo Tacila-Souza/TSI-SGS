@@ -2,7 +2,7 @@
 
 ## **Análise de funcionalidades e integração entre Frontend Next.js/React, Backend PHP e Banco de Dados**
 
-> **Status:** documento canônico de contexto técnico. Antes de implementar, leia `docs/README.md`, `docs/AGENTS.md` e `docs/contrato_api_frontend.md`.
+> **Status:** documento canônico de contexto técnico. Antes de implementar, leia `README.md`, `docs/AGENTS.md` e `docs/contrato_api_frontend.md`.
 >
 > **Arquitetura aprovada:** backend PHP híbrido + contrato JSON. CRUD simples pode ter SQL PDO no próprio endpoint; fluxos complexos ficam em `src/dominio/`; consultas compartilhadas em `src/consultas/`; a serialização dos DTOs fica em `src/contrato/`.
 >
@@ -275,7 +275,7 @@ As menções antigas a `/backend/`, `/frontend/` e `/dados/` devem ser lidas, re
 
 Assim, `/api/...` é o prefixo **lógico** da URL, enquanto `/back-end/` é a localização **física** do código. Os dois não são equivalentes e não devem ser misturados.
 
-* A ordem de aplicação dos scripts SQL (`01`, `02`, `03`) e o uso do cliente `mysql` para o trigger estão documentados em `docs/README.md`, seção 8.1.
+* A ordem de aplicação dos scripts SQL (`01`, `02`, `03`) e o uso do cliente `mysql` para o trigger estão documentados em `README.md`, seção 8.1.
 
 #### **6.3.3. Árvore de diretórios obrigatória**
 
@@ -703,7 +703,7 @@ Implementado e validado:
 
 - Domínio de avaliação em `src/dominio/avaliacao.php`: carregar apresentação, iniciar, salvar nota/feedback, gerar mock idempotente e encerrar sessão.
 - Domínio de resultados em `src/dominio/resultados.php`: `T_s`, `P_s`, `F_s`, média do grupo, ranking, fallback `P_s = T_s` e arredondamento só na resposta.
-- 4 endpoints presentes: `apresentacao/carregar.php`, `salvar-avaliacao.php`, `encerrar.php` e `resultados/compilar.php`; `apresentacao/iniciar.php` segue pendente (ver 6.3.22).
+- 5 endpoints presentes: `apresentacao/carregar.php`, `iniciar.php`, `salvar-avaliacao.php`, `encerrar.php` e `resultados/compilar.php`.
 - Frontend: página de apresentação e aba de resultados passaram a consumir a API; componente `ResultadoView` renderiza o `ResultadoDTO`.
 - Múltiplas datas validadas: grupos, presença e resultados são independentes por `seminario_data_id`.
 
@@ -745,9 +745,9 @@ Regras de amarração:
 
 #### **6.3.22. Estado de handoff (pacote para a equipe)**
 
-O diretório `back-end/` conta hoje com infraestrutura em `src/`, **19 endpoints admin**, **19 endpoints do professor** e **5 endpoints do aluno** em `public/api/`. Faltam apenas `apresentacao/iniciar.php` e `grupos/sincronizar.php` do catálogo 6.3.7; as funções de domínio correspondentes já existem, e a exposição HTTP deve seguir este documento, o contrato, os padrões PHP, as specs e o DDL oficial.
+O diretório `back-end/` conta hoje com infraestrutura em `src/`, **19 endpoints admin**, **21 endpoints do professor** e **5 endpoints do aluno** em `public/api/`. O catálogo 6.3.7 está completo: `apresentacao/iniciar.php` e `grupos/sincronizar.php` foram expostas sobre as funções de domínio já existentes, seguindo este documento, o contrato, os padrões PHP, as specs e o DDL oficial.
 
-Ordem de trabalho recomendada para o que falta: expor as duas rotas pendentes (`iniciar.php` e `sincronizar.php`) → validação com `curl`, `php -l`, `npx tsc --noEmit` e `npm run build`. O `front-end/lib/services/` já implementado define o formato esperado; o contrato, seção 9.4, é o índice de amarração.
+Validação recomendada após alterações: `curl`, `php -l`, `pnpm typecheck`, `pnpm build` e `./scripts/smoke-api.sh`. O `front-end/lib/services/` já implementado define o formato esperado; o contrato, seção 9.4, é o índice de amarração. Antes de integrar branches antigas, consulte `docs/integracao_de_branches.md`.
 
 ## **7\. Filtros e consultas**
 
@@ -909,7 +909,7 @@ O resultado precisa permitir que qualquer integrante compreenda:
 
 A análise deve priorizar a compreensão dos requisitos e a separação das responsabilidades antes de iniciar a implementação.
 
-Este documento constitui a referência técnica geral do projeto e deverá ser utilizado em conjunto com `docs/README.md`, `docs/AGENTS.md`, `docs/contrato_api_frontend.md`, `docs/padroes_de_codigo_php.md` e as especificações de cada funcionalidade.
+Este documento constitui a referência técnica geral do projeto e deverá ser utilizado em conjunto com `README.md`, `docs/AGENTS.md`, `docs/contrato_api_frontend.md`, `docs/padroes_de_codigo_php.md` e as especificações de cada funcionalidade.
 
 ## **13. Decisões de planejamento consolidadas**
 
@@ -934,7 +934,7 @@ Este documento constitui a referência técnica geral do projeto e deverá ser u
 | DP-017 | Integridade entre sessão e grupo de avaliação, e entre presença e matrícula na disciplina, é validada na aplicação. O banco cobre a exclusividade de grupo por data nos triggers de `INSERT` e `UPDATE`. | Evita regras ocultas em triggers para validações complexas; o endpoint retorna `400` com mensagem clara. |
 | DP-018 | Credenciais locais ficam em `back-end/.env`, não versionado. `back-end/.env.example` é versionado sem senha; `.gitignore` da raiz ignora `.env` e `.env.*`, exceto o example. | Nenhuma senha entra no repositório; novos devs copiam o example e preenchem localmente. |
 | DP-019 | `PROFESSOR_PADRAO=1` e `ALUNO_PADRAO=1` são constantes expostas pelo bootstrap. A query string continua obrigatória. | Testes são simplificados sem alterar o contrato nem enfraquecer a validação de identidade. |
-| DP-020 | Comandos de aplicação do banco e de subida do servidor PHP ficam documentados em `docs/README.md` e `back-end/README.md`. | Qualquer dev reproduz o ambiente local com os mesmos comandos validados. |
+| DP-020 | Comandos de aplicação do banco e de subida do servidor PHP ficam documentados em `README.md` e `back-end/README.md`. | Qualquer dev reproduz o ambiente local com os mesmos comandos validados. |
 | DP-021 | Exclusão em lote de alunos/professores usa `POST ...excluir-lote.php` com `{ "ids": number[] }`, validação prévia de todos os IDs e transação única. | A UI de seleção múltipla tem suporte real no backend, sem exclusões parciais. |
 | DP-022 | Implementação em fases: Fase 1 entregou infraestrutura e admin, com integração das telas administrativas via `lib/services`. | Reduz risco e permite validar cada camada antes de avançar. |
 | DP-023 | Fases seguintes: edição completa de seminário com diff por ID e proteção de histórico; filtro de resultados do aluno no backend; sincronização de grupos em lote. | Decisões registradas agora para manter contrato e documentação coerentes com a entrega prevista. |
