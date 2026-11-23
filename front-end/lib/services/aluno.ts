@@ -22,7 +22,14 @@ export interface FormularioAvaliacao {
   dataId: number
   dataSessao: string
   criterios: Array<{ id: number; nome: string; peso: number; tipo: 'individual' | 'grupo' }>
-  grupos: Array<{ id: number; nome: string; tema: string; integrantesIds: number[]; ordem: number }>
+  grupos: Array<{
+    id: number
+    nome: string
+    tema: string
+    integrantesIds: number[]
+    integrantes: Array<{ alunoId: number; nome: string }>
+    ordem: number
+  }>
   minhasAvaliacoes: Array<{
     grupoId: number
     notas: Array<{ criterioId: number; alunoId: number | null; nota: number }>

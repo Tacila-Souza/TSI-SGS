@@ -47,6 +47,8 @@ export interface ResultadoDTO {
   dataId: number
   dataSessao: string
   semAvaliadores: boolean
+  pesoProfessor: number
+  pesoAlunos: number
   criterios: Array<{ id: number; nome: string; peso: number; tipo: 'individual' | 'grupo' }>
   ranking: Array<{
     posicao: number
@@ -64,6 +66,7 @@ export interface ResultadoDTO {
       notaAlunos: number
       notaFinal: number
     }>
+    notasProfessorPorCriterio: Array<{ criterioId: number; nota: number | null }>
   }>
   feedbacks: Array<{
     grupoId: number

@@ -6,7 +6,7 @@ import { ArrowRight, BookOpen, CalendarDays, Clock, Radio, Users } from 'lucide-
 import { toast } from 'sonner'
 import { useApp } from '@/lib/app-context'
 import { alunoService } from '@/lib/services'
-import type { Seminario } from '@/lib/types'
+import { obterSessoesSeminario, type Seminario } from '@/lib/types'
 import { formatarDataCurta } from '@/lib/format'
 import { PageHeader } from '@/components/page-header'
 import { StatusBadge } from '@/components/status-badge'
@@ -43,6 +43,12 @@ export default function AlunoDashboardPage() {
     ?? seminarios.find((seminario) => seminario.status === 'em_andamento')
   const grupoAoVivo = aoVivo?.grupos.find((grupo) => grupo.id === live.grupoId)
     ?? aoVivo?.grupos.find((grupo) => grupo.ordem === 1)
+  const sessaoAoVivo = aoVivo
+    ? obterSessoesSeminario(aoVivo).find((sessao) => sessao.status !== 'finalizado')
+    : undefined
+  const hrefAoVivo = aoVivo
+    ? `/aluno/seminarios/${aoVivo.id}/ao-vivo${sessaoAoVivo?.data ? `?data=${encodeURIComponent(sessaoAoVivo.data)}` : ''}`
+    : '#'
 
   return (
     <div className="flex flex-col gap-8">
@@ -66,7 +72,7 @@ export default function AlunoDashboardPage() {
                 </p>
               </div>
             </div>
-            <Button nativeButton={false} render={<Link href={`/aluno/seminarios/${aoVivo.id}/ao-vivo`} />} size="sm">
+            <Button nativeButton={false} render={<Link href={hrefAoVivo} />} size="sm">
               Acompanhar apresentação <ArrowRight data-icon="inline-end" />
             </Button>
           </CardContent>
@@ -120,7 +126,7 @@ export default function AlunoDashboardPage() {
                       <span className="flex min-h-9 items-center gap-1.5"><Clock className="size-3.5 shrink-0" />{seminario.horario}</span>
                       <span className="flex min-h-9 items-center gap-1.5"><Users className="size-3.5 shrink-0" />{totalIntegrantes} alunos</span>
                     </div>
-                    {estaAoVivo ? <Button size="sm" nativeButton={false} render={<Link href={`/aluno/seminarios/${seminario.id}/ao-vivo`} />}>Avaliar agora <ArrowRight data-icon="inline-end" /></Button> : null}
+                    {estaAoVivo ? <Button size="sm" nativeButton={false} render={<Link href={estaAoVivo ? hrefAoVivo : `/aluno/seminarios/${seminario.id}/ao-vivo`} />}>Avaliar agora <ArrowRight data-icon="inline-end" /></Button> : null}
                   </CardFooter>
                 </Card>
               )

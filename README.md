@@ -125,6 +125,12 @@ mysql -u root -p < database/03_seeds_dml.sql
 
 `01_schema_ddl.sql` contém `DROP DATABASE` e é destrutivo; use apenas para criar/recriar o ambiente de desenvolvimento.
 
+Para testar a avaliação por pares no portal do aluno, há um script **opcional de desenvolvimento** que ativa a sessão 2 com um grupo elegível e presença do aluno 1. Ele é reaplicável e substitui os dados daquela sessão:
+
+```bash
+mysql -u root -p < database/04_dev_sessao_avaliacao.sql
+```
+
 **2) Backend** — após recriar `back-end/` conforme a seção 6.3.3 do documento técnico:
 
 ```bash
@@ -299,6 +305,8 @@ mysql -u root -p < database/01_schema_ddl.sql
 mysql -u root -p < database/02_trigger_exclusividade.sql
 mysql -u root -p < database/03_seeds_dml.sql
 ```
+
+Após os três scripts oficiais, `database/04_dev_sessao_avaliacao.sql` é opcional e específico de desenvolvimento: prepara uma sessão ativa para testar a avaliação por pares. Ele não substitui os seeds e pode ser executado quantas vezes for necessário.
 
 O `DELIMITER $$` de `02_trigger_exclusividade.sql` é uma diretiva do cliente `mysql`, não um comando SQL do servidor. Por isso o trigger deve ser aplicado via CLI; se for necessário fazê-lo por PHP, remova as linhas `DELIMITER`, o sufixo `$$` e envie o `CREATE TRIGGER` como uma única instrução.
 

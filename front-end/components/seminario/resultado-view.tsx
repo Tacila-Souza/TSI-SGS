@@ -2,12 +2,66 @@
 
 import { Medal, Trophy, Users } from 'lucide-react'
 import type { ResultadoDTO } from '@/lib/types-admin'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 
 function fmt(n: number): string {
   return n.toFixed(2).replace('.', ',')
+}
+
+function iniciais(nome: string): string {
+  return nome.split(/\s+/).filter(Boolean).slice(0, 2).map((parte) => parte[0]?.toUpperCase() ?? '').join('')
+}
+
+function Feedbacks({
+  grupo,
+  feedbacks,
+}: {
+  grupo: ResultadoDTO['ranking'][number]
+  feedbacks: ResultadoDTO['feedbacks']
+}) {
+  const doProfessor = feedbacks.filter((item) => item.tipo === 'professor')
+  const dosAlunos = feedbacks.filter((item) => item.tipo === 'par')
+
+  const cartao = (feedback: ResultadoDTO['feedbacks'][number], chave: string) => {
+    const nome = feedback.avaliadorNome ?? (feedback.tipo === 'par' ? `Aluno ${feedback.avaliadorId}` : 'Professor')
+    return (
+      <div key={chave} className="flex items-start gap-3 rounded-lg bg-muted/60 p-3">
+        <Avatar className="size-8">
+          <AvatarFallback className="text-[10px] font-medium">{iniciais(nome)}</AvatarFallback>
+        </Avatar>
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground">{nome}</p>
+          <p className="text-sm leading-relaxed text-foreground">{feedback.texto}</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-2 border-t pt-3">
+      <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Feedbacks</span>
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="flex flex-col gap-2 rounded-lg border p-4">
+          <h4 className="text-sm font-semibold">Feedback do Professor</h4>
+          {doProfessor.length > 0
+            ? doProfessor.map((feedback, index) => cartao(feedback, `prof-${index}`))
+            : <p className="text-sm text-muted-foreground">Nenhum feedback registrado.</p>}
+        </div>
+        <div className="flex flex-col gap-2 rounded-lg border p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-sm font-semibold">Feedback dos Alunos</h4>
+            <Badge variant="outline">Resumo do feedback de todos os alunos</Badge>
+          </div>
+          {dosAlunos.length > 0
+            ? dosAlunos.map((feedback, index) => cartao(feedback, `par-${index}`))
+            : <p className="text-sm text-muted-foreground">{grupo.integrantes.length === 0 ? 'Feedbacks de pares disponíveis apenas para o seu grupo.' : 'Nenhum feedback registrado.'}</p>}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function ResultadoView({ resultado }: { resultado: ResultadoDTO }) {
@@ -54,10 +108,27 @@ export function ResultadoView({ resultado }: { resultado: ResultadoDTO }) {
                 <span className="text-lg font-semibold">{fmt(grupo.mediaGeral)}</span>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
-                <div><p className="text-xs text-muted-foreground">Professor</p><p className="font-medium">{fmt(grupo.notaProfessor)}</p><Progress value={grupo.notaProfessor * 10} /></div>
+                <div><p className="text-xs text-muted-foreground">Professor · peso {Math.round(resultado.pesoProfessor * 100)}%</p><p className="font-medium">{fmt(grupo.notaProfessor)}</p><Progress value={grupo.notaProfessor * 10} /></div>
                 <div><p className="text-xs text-muted-foreground">Pares</p><p className="font-medium">{fmt(grupo.notaAlunos)}</p><Progress value={grupo.notaAlunos * 10} /></div>
                 <div><p className="text-xs text-muted-foreground">Avaliadores</p><p className="font-medium">{grupo.avaliadoresConsiderados}</p></div>
               </div>
+              {resultado.criterios.length > 0 && (
+                <div className="flex flex-col gap-2 border-t pt-3">
+                  <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Notas do professor por critério</span>
+                  <div className="flex flex-wrap gap-2">
+                    {resultado.criterios.map((criterio) => {
+                      const nota = grupo.notasProfessorPorCriterio?.find((item) => item.criterioId === criterio.id)?.nota
+                      return (
+                        <Badge key={criterio.id} variant="secondary" className="gap-1.5 font-normal">
+                          {criterio.nome}
+                          <span className="text-muted-foreground">{criterio.tipo === 'individual' ? 'Individual' : 'Em Grupo'} · {criterio.peso}%</span>
+                          <span className="font-semibold text-foreground">{nota != null ? fmt(nota) : '—'}</span>
+                        </Badge>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
               {grupo.integrantes.length > 0 && (
                 <div className="flex flex-col gap-1 border-t pt-3">
                   <span className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><Users className="size-3" />Integrantes</span>
@@ -69,11 +140,7 @@ export function ResultadoView({ resultado }: { resultado: ResultadoDTO }) {
                   ))}
                 </div>
               )}
-              {(feedbacksPorGrupo.get(grupo.grupoId) ?? []).map((feedback, index) => (
-                <p key={index} className="rounded-md bg-muted/50 p-3 text-sm text-muted-foreground">
-                  <strong className="text-foreground">{feedback.avaliadorNome ?? feedback.tipo}:</strong> {feedback.texto}
-                </p>
-              ))}
+              <Feedbacks grupo={grupo} feedbacks={feedbacksPorGrupo.get(grupo.grupoId) ?? []} />
             </div>
           ))}
         </CardContent>

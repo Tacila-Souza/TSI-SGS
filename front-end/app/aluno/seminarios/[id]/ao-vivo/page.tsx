@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, CheckCircle2, Radio, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { alunoService } from '@/lib/services'
@@ -26,6 +26,7 @@ function mensagemErro(erro: unknown): string {
 export default function AlunoAoVivoPage() {
   const { id } = useParams<{ id: string }>()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [seminario, setSeminario] = React.useState<Seminario | null>(null)
   const [formulario, setFormulario] = React.useState<FormularioAvaliacao | null>(null)
   const [resultado, setResultado] = React.useState<ResultadoDTO | null>(null)
@@ -53,9 +54,11 @@ export default function AlunoAoVivoPage() {
 
       if (sessao.status === 'finalizado') {
         setResultado(await alunoService.compilarResultados(alunoId, sessao.id))
+        setFormulario(null)
         return
       }
 
+      setResultado(null)
       const form = await alunoService.formulario(alunoId, sessao.id)
       setFormulario(form)
       if (!grupoId && form.grupos[0]) setGrupoId(form.grupos[0].id)
@@ -86,7 +89,9 @@ export default function AlunoAoVivoPage() {
     setErro('')
   }, [grupo?.id])
 
-  const finalizada = Boolean(seminario && obterSessoesSeminario(seminario).some((s) => s.status === 'finalizado'))
+  const sessoes = seminario ? obterSessoesSeminario(seminario) : []
+  const sessaoAtual = sessoes.find((item) => item.data === searchParams.get('data')) ?? sessoes[0]
+  const finalizada = sessaoAtual?.status === 'finalizado'
 
   if (carregando && !seminario) return <p className="text-sm text-muted-foreground">Carregando avaliação…</p>
   if (!seminario) return <Card><CardContent className="p-8 text-center">Seminário não encontrado.</CardContent></Card>
@@ -120,7 +125,7 @@ export default function AlunoAoVivoPage() {
     const payload = Object.entries(notas)
       .filter(([, valor]) => valor !== '')
       .map(([chave, valor]) => {
-        const [prefixo, criterio, aluno] = chave.split(':')
+        const [prefixo, aluno] = chave.split(':')
         return {
           criterioId: Number(prefixo.replace('cr-', '')),
           alunoId: aluno ? Number(aluno.replace('u-al-', '')) : null,
@@ -151,6 +156,28 @@ export default function AlunoAoVivoPage() {
         <Badge variant="secondary">Peso discente {Math.round((1 - seminario.pesoProfessor) * 100)}%</Badge>
       </CardContent>
     </Card>
+    {sessoes.length > 1 && (
+      <Card>
+        <CardHeader><CardTitle className="text-base">Sessões do seminário</CardTitle><CardDescription>Escolha a data da apresentação que deseja acompanhar.</CardDescription></CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          {sessoes.map((sessao) => (
+            <Button
+              key={`${sessao.data}-${sessao.id ?? ''}`}
+              variant={sessao.data === sessaoAtual?.data ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setGrupoId(null)
+                setFormulario(null)
+                setResultado(null)
+                router.replace(`/aluno/seminarios/${id}/ao-vivo?data=${encodeURIComponent(sessao.data)}`)
+              }}
+            >
+              {sessao.data}{sessao.status === 'finalizado' ? ' · finalizada' : ''}
+            </Button>
+          ))}
+        </CardContent>
+      </Card>
+    )}
     {finalizada ? (
       <Card><CardContent className="p-5"><p className="font-semibold">Apresentação encerrada</p><p className="text-sm text-muted-foreground">O resultado será exibido em breve.</p></CardContent></Card>
     ) : !formulario ? (
@@ -172,9 +199,10 @@ export default function AlunoAoVivoPage() {
           <CardContent>
             {grupo ? <form className="flex flex-col gap-6" onSubmit={enviar}>
               {formulario.criterios.filter((criterio) => criterio.tipo === 'grupo').map((criterio) => <div key={criterio.id} className="flex flex-col gap-2"><Label htmlFor={`nota-cr-${criterio.id}`}>{criterio.nome} ({criterio.peso}%)</Label><Input id={`nota-cr-${criterio.id}`} type="number" min={0} max={10} step="0.5" value={notas[`cr-${criterio.id}`] ?? ''} onChange={(event) => atualizarNota(`cr-${criterio.id}`, event.target.value)} /></div>)}
-              {formulario.criterios.filter((criterio) => criterio.tipo === 'individual').map((criterio) => <fieldset key={criterio.id} className="flex flex-col gap-3 rounded-lg border p-4"><legend className="px-1 text-sm font-medium">{criterio.nome} ({criterio.peso}%) — por integrante</legend>{grupo.integrantesIds.map((alunoId) => {
-                const chave = `cr-${criterio.id}:u-al-${alunoId}`
-                return <div key={chave} className="flex flex-col gap-2"><Label htmlFor={`nota-${chave}`}>Aluno {alunoId}</Label><Input id={`nota-${chave}`} type="number" min={0} max={10} step="0.5" value={notas[chave] ?? ''} onChange={(event) => atualizarNota(chave, event.target.value)} /></div>
+              {formulario.criterios.filter((criterio) => criterio.tipo === 'individual').map((criterio) => <fieldset key={criterio.id} className="flex flex-col gap-3 rounded-lg border p-4"><legend className="px-1 text-sm font-medium">{criterio.nome} ({criterio.peso}%) — por integrante</legend>{grupo.integrantesIds.map((integranteId) => {
+                const nome = grupo.integrantes?.find((integrante) => integrante.alunoId === integranteId)?.nome ?? `Aluno ${integranteId}`
+                const chave = `cr-${criterio.id}:u-al-${integranteId}`
+                return <div key={chave} className="flex flex-col gap-2"><Label htmlFor={`nota-${chave}`}>{nome}</Label><Input id={`nota-${chave}`} type="number" min={0} max={10} step="0.5" value={notas[chave] ?? ''} onChange={(event) => atualizarNota(chave, event.target.value)} /></div>
               })}</fieldset>)}
               <div className="flex flex-col gap-2"><Label htmlFor="feedback">Feedback para o grupo</Label><Textarea id="feedback" value={feedback} onChange={(event) => { setFeedback(event.target.value); setSalva(false) }} rows={4} /></div>
               {erro && <p className="text-sm font-medium text-destructive" role="alert">{erro}</p>}

@@ -20,6 +20,7 @@ function buscar_seminarios_matriculados(PDO $pdo, int $alunoId): array
     return $stmt->fetchAll();
 }
 
+<<<<<<< Updated upstream
 function buscar_datas_seminario(PDO $pdo, int $seminarioId): array
 {
     $sql = 'SELECT id, data_apresentacao, horario, status
@@ -33,6 +34,22 @@ function buscar_datas_seminario(PDO $pdo, int $seminarioId): array
 }
 
 function buscar_criterios_seminario(PDO $pdo, int $seminarioId): array
+=======
+function buscar_seminario(PDO $pdo, int $seminarioId): ?array
+{
+    $stmt = $pdo->prepare('SELECT * FROM seminarios WHERE id = ?');
+    $stmt->execute([$seminarioId]);
+    $seminario = $stmt->fetch();
+    if ($seminario === false) {
+        return null;
+    }
+
+    carregar_detalhes_seminario($pdo, $seminario);
+    return $seminario;
+}
+
+function listar_datas_aluno(PDO $pdo, int $alunoId, int $seminarioId): array
+>>>>>>> Stashed changes
 {
     $stmt = $pdo->prepare(
         'SELECT id, nome_criterio, peso_criterio, tipo_avaliacao
@@ -42,7 +59,37 @@ function buscar_criterios_seminario(PDO $pdo, int $seminarioId): array
     return $stmt->fetchAll();
 }
 
+<<<<<<< Updated upstream
 function buscar_grupos_da_data(PDO $pdo, int $dataId): array
+=======
+/** Nomes dos integrantes de um grupo, na ordem em que foram vinculados. */
+function nomes_integrantes_grupo(PDO $pdo, array $integrantesIds): array
+{
+    $ids = array_values(array_unique(array_map('intval', $integrantesIds)));
+    if ($ids === []) {
+        return [];
+    }
+
+    $marcadores = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $pdo->prepare("SELECT id, nome_completo FROM alunos WHERE id IN ({$marcadores})");
+    $stmt->execute($ids);
+
+    $nomes = [];
+    foreach ($stmt->fetchAll() as $linha) {
+        $nomes[(int) $linha['id']] = (string) $linha['nome_completo'];
+    }
+
+    return array_map(
+        static fn (int $id): array => [
+            'alunoId' => $id,
+            'nome' => $nomes[$id] ?? ('Aluno ' . $id),
+        ],
+        $ids
+    );
+}
+
+function formulario_avaliacao_aluno(PDO $pdo, int $alunoId, int $dataId): array
+>>>>>>> Stashed changes
 {
     $sql = 'SELECT g.id, g.tema, g.ordem_apresentacao, g.status,
                    COALESCE(GROUP_CONCAT(ga.aluno_id ORDER BY ga.aluno_id SEPARATOR \',\'), \'\') AS integrantes_ids
@@ -172,10 +219,28 @@ function carregar_formulario_aluno(PDO $pdo, int $alunoId, int $dataId): array
         $grupos[] = $grupo;
     }
 
+<<<<<<< Updated upstream
     return serializar_formulario_aluno(
         $sessao,
         $criterios,
         $grupos,
         buscar_minhas_avaliacoes($pdo, $alunoId, $dataId)
     );
+=======
+    $gruposApi = [];
+    foreach ($grupos as $grupo) {
+        $dto = serializar_grupo($grupo);
+        $dto['integrantes'] = nomes_integrantes_grupo($pdo, $grupo['integrantes_ids']);
+        $gruposApi[] = $dto;
+    }
+
+    return [
+        'seminarioId' => (int) $data['seminario_id'],
+        'dataId' => $dataId,
+        'dataSessao' => (string) $data['data_apresentacao'],
+        'criterios' => array_map('serializar_criterio', $criterios),
+        'grupos' => $gruposApi,
+        'minhasAvaliacoes' => array_values($minhasAvaliacoes),
+    ];
+>>>>>>> Stashed changes
 }

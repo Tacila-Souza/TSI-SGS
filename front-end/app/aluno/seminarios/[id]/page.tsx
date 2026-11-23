@@ -54,12 +54,13 @@ export default function AlunoSeminarioDetalhePage() {
 
   const sessoes = obterSessoesSeminario(seminario)
   const sessao = sessoes.find((item) => item.status === 'finalizado') ?? sessoes[0]
+  const sessaoAoVivo = sessoes.find((item) => item.status !== 'finalizado')
   const grupos = sessao?.grupos ?? seminario.grupos
 
   return <div className="flex flex-col gap-6">
     <PageHeader title={seminario.titulo} description={seminario.descricao}>
       <Button variant="outline" nativeButton={false} render={<Link href="/aluno/seminarios" />}><ArrowLeft data-icon="inline-start" />Voltar</Button>
-      {sessao?.status !== 'finalizado' && <Button nativeButton={false} render={<Link href={`/aluno/seminarios/${seminario.id}/ao-vivo${sessao?.data ? `?data=${encodeURIComponent(sessao.data)}` : ''}`} />}><Radio data-icon="inline-start" />Acompanhar ao vivo</Button>}
+      {sessaoAoVivo && <Button nativeButton={false} render={<Link href={`/aluno/seminarios/${seminario.id}/ao-vivo?data=${encodeURIComponent(sessaoAoVivo.data)}`} />}><Radio data-icon="inline-start" />Acompanhar ao vivo</Button>}
     </PageHeader>
     {sessao?.status === 'finalizado' ? (
       <section className="flex flex-col gap-3">
