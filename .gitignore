@@ -15,6 +15,9 @@ front-end/.next/
 front-end/.DS_Store
 front-end/tsconfig.tsbuildinfo
 
+# Gerenciador canônico é pnpm; não versionar lockfile do npm
+front-end/package-lock.json
+
 # Backend environment (real credentials must not be versioned)
 back-end/.env
 back-end/.env.*

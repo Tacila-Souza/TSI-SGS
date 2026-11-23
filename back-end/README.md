@@ -18,15 +18,15 @@ back-end/
    ```bash
    cp .env.example .env
    ```
-2. Preencha `DB_PASS` em `.env` com a senha local do MySQL (neste ambiente: `root`).
-3. O banco `gestao_seminarios` deve existir. Veja `docs/README.md`, seção 8.1, para aplicar os scripts SQL.
+2. Preencha `DB_HOST`, `DB_PORT` e `DB_PASS` em `.env` conforme o seu MySQL. A porta padrão do modelo é `3306`, mas o ambiente de referência usa `3308`; confirme com `mysql -u root -p -e "SHOW VARIABLES LIKE 'port';"`. Não versionar a senha real.
+3. O banco `gestao_seminarios` deve existir. Veja `README.md`, seção 8.1, para aplicar os scripts SQL.
 
 Variáveis disponíveis:
 
 | Variável | Descrição |
 |---|---|
 | `DB_HOST` | Host do MySQL (padrão `127.0.0.1`) |
-| `DB_PORT` | Porta (padrão `3306`) |
+| `DB_PORT` | Porta real do MySQL (padrão `3306`; neste ambiente, `3308`) |
 | `DB_NAME` | Nome do banco (padrão `gestao_seminarios`) |
 | `DB_USER` | Usuário (padrão `root`) |
 | `DB_PASS` | Senha local |
