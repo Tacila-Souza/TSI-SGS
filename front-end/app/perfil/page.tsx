@@ -6,8 +6,6 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { useApp } from '@/lib/app-context'
-import { iniciais } from '@/lib/mock-data'
-import { turmas } from '@/lib/mock-data'
 import { BookOpen, Mail, Hash, GraduationCap } from 'lucide-react'
 
 const roleNames = {
@@ -16,8 +14,13 @@ const roleNames = {
   aluno: 'Aluno(a)',
 } as const
 
+function iniciais(nome: string): string {
+  const partes = nome.trim().split(/\s+/)
+  return (partes[0]?.[0] ?? '') + (partes[partes.length - 1]?.[0] ?? '')
+}
+
 export default function PerfilPage() {
-  const { currentUser } = useApp()
+  const { currentUser, seminarios } = useApp()
 
   if (!currentUser) {
     return <div className="flex min-h-svh items-center justify-center text-sm text-muted-foreground">Redirecionando…</div>
@@ -25,11 +28,19 @@ export default function PerfilPage() {
 
   const isProfessor = currentUser.role === 'professor'
   const isAluno = currentUser.role === 'aluno'
-  const disciplinas = isProfessor
-    ? turmas.filter((turma) => turma.professorId === currentUser.id)
+  const vinculos = isProfessor
+    ? seminarios.filter((seminario) => seminario.professorId === currentUser.id)
     : isAluno
-      ? turmas.filter((turma) => currentUser.turmaIds.includes(turma.id))
+      ? seminarios.filter((seminario) => currentUser.turmaIds.includes(seminario.turmaId))
       : []
+  const disciplinas = Array.from(
+    new Map(
+      vinculos.map((seminario) => [
+        seminario.turmaId,
+        { id: seminario.turmaId, nome: seminario.disciplina, titulo: seminario.titulo },
+      ]),
+    ).values(),
+  )
 
   return (
     <AppShell role={currentUser.role}>
@@ -75,10 +86,10 @@ export default function PerfilPage() {
             <CardContent>
               {disciplinas.length > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {disciplinas.map((turma) => (
-                    <div key={turma.id} className="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-4">
-                      <div className="flex items-start justify-between gap-3"><span className="font-medium text-foreground">{turma.disciplina}</span></div>
-                      <span className="text-sm text-muted-foreground">Disciplina {turma.nome}</span>
+                  {disciplinas.map((disciplina) => (
+                    <div key={disciplina.id} className="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-4">
+                      <div className="flex items-start justify-between gap-3"><span className="font-medium text-foreground">{disciplina.nome}</span></div>
+                      <span className="text-sm text-muted-foreground">{disciplina.titulo}</span>
                     </div>
                   ))}
                 </div>

@@ -11,8 +11,7 @@ import {
   Users,
 } from 'lucide-react'
 import { useApp } from '@/lib/app-context'
-import { usuarios } from '@/lib/mock-data'
-import type { Role } from '@/lib/types'
+import type { Role, User } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 
 const roleInfo: Record<
@@ -45,12 +44,28 @@ const destaques = [
   { icon: Star, texto: 'Avaliação por pares com peso maior para o professor' },
 ]
 
+/** Admin do MVP: identidade fixa, sem registro no banco. */
+const ADMIN_TESTE: User = {
+  id: 'u-coord',
+  nome: 'Administrador do Sistema',
+  email: 'admin@instituto.edu.br',
+  role: 'coordenador',
+  status: 'ativo',
+  registro: 'SIAPE 100234',
+  turmaIds: [],
+}
+
 export default function LoginPage() {
-  const { loginAs } = useApp()
+  const { loginAs, usuarios, carregandoUsuarios } = useApp()
   const router = useRouter()
 
+  function usuarioPara(role: Role): User | undefined {
+    if (role === 'coordenador') return ADMIN_TESTE
+    return usuarios.find((usuario) => usuario.role === role && usuario.status === 'ativo')
+  }
+
   function entrar(role: Role) {
-    const user = usuarios.find((usuario) => usuario.role === role && usuario.status === 'ativo')
+    const user = usuarioPara(role)
     if (!user) return
     loginAs(user)
     router.push(roleInfo[role].home)
@@ -124,34 +139,38 @@ export default function LoginPage() {
           </div>
 
           <div className="flex flex-col gap-3">
-            {(Object.keys(roleInfo) as Role[]).map((role) => {
-              const profile = roleInfo[role]
-              const user = usuarios.find((item) => item.role === role)
-              if (!user) return null
+            {carregandoUsuarios ? (
+              <p className="text-sm text-muted-foreground">Carregando perfis…</p>
+            ) : (
+              (Object.keys(roleInfo) as Role[]).map((role) => {
+                const profile = roleInfo[role]
+                const user = usuarioPara(role)
+                if (!user) return null
 
-              return (
-                <Button
-                  key={role}
-                  variant="outline"
-                  className="h-auto justify-between gap-4 p-4 text-left"
-                  onClick={() => entrar(role)}
-                  aria-label={`Entrar como ${profile.titulo}: ${user.nome}`}
-                >
-                  <span className="flex min-w-0 items-center gap-3">
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <profile.icon className="size-5" />
-                    </span>
-                    <span className="flex min-w-0 flex-col">
-                      <span className="font-medium">{profile.titulo}</span>
-                      <span className="truncate text-xs text-muted-foreground">
-                        {user.nome}
+                return (
+                  <Button
+                    key={role}
+                    variant="outline"
+                    className="h-auto justify-between gap-4 p-4 text-left"
+                    onClick={() => entrar(role)}
+                    aria-label={`Entrar como ${profile.titulo}: ${user.nome}`}
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <profile.icon className="size-5" />
+                      </span>
+                      <span className="flex min-w-0 flex-col">
+                        <span className="font-medium">{profile.titulo}</span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {user.nome}
+                        </span>
                       </span>
                     </span>
-                  </span>
-                  <ArrowRight data-icon="inline-end" />
-                </Button>
-              )
-            })}
+                    <ArrowRight data-icon="inline-end" />
+                  </Button>
+                )
+              })
+            )}
           </div>
 
           <p className="text-center text-xs text-muted-foreground">

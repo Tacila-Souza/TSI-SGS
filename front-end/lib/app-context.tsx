@@ -41,19 +41,20 @@ interface AppContextValue {
 
 
   // Apresentação ao vivo
-startLive: (
-  seminarioId: string,
-  grupoId: string,
-  tempoApresentacaoMin?: number) => void
+  startLive: (
+    seminarioId: string,
+    grupoId: string,
+    tempoApresentacaoMin?: number,
+  ) => void
   pauseLive: () => void
   resumeLive: () => void
   resetLive: () => void
   finishLive: () => void
-selectLiveGroup: (
-  seminarioId: string,
-  grupoId: string,
-  tempoApresentacaoMin?: number
-) => void
+  selectLiveGroup: (
+    seminarioId: string,
+    grupoId: string,
+    tempoApresentacaoMin?: number,
+  ) => void
   stopLive: () => void
 }
 
