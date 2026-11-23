@@ -33,7 +33,6 @@ export default function ProfessorSeminarioDetalhePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  
 const { carregandoPerfil, professorId: professorIdContext, recarregarSeminarios } = useApp()
 
 const professorId = professorIdContext ?? 0
@@ -61,7 +60,6 @@ const professorId = professorIdContext ?? 0
   const sessao = sessoes.find((item) => item.data === dataSelecionada) ?? sessoes[0]
   const resultadosDisponiveis = sessao?.status === 'finalizado'
 
-  
 const carregar = React.useCallback(async () => {
   if (carregandoPerfil || professorId === 0) {
     setCarregando(false)

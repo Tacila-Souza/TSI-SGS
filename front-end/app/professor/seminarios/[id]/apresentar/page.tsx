@@ -60,7 +60,6 @@ export default function ApresentarSeminarioPage() {
   const sessao = sessoes.find((item) => item.data === dataSessao) ?? sessoes[0]
   const dataId = sessao?.id
 
-  
 const carregar = React.useCallback(async () => {
   if (carregandoPerfil || professorId === 0) {
     setCarregando(false)
@@ -346,7 +345,6 @@ async function concluirSessao() {
               <LiveTimer
                 live={live}
                 canStart={grupos.length > 0}
-                
 onStart={() => {
   if (!chamadaRealizada) {
     setShowAttendanceAlert(true)

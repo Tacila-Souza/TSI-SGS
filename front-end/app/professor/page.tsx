@@ -37,17 +37,17 @@ import {
 } from '@/components/ui/empty'
 
 export default function ProfessorDashboard() {
-  const { currentUser, live } = useApp()
+  const { currentUser, live, professorId, carregandoPerfil } = useApp()
   const [meus, setMeus] = React.useState<Seminario[]>([])
   const [carregando, setCarregando] = React.useState(true)
 
-  const professorId = React.useMemo(() => {
-    const configurado = process.env.NEXT_PUBLIC_PROFESSOR_ID
-    return configurado ? Number(configurado) : 1
-  }, [])
-
   React.useEffect(() => {
     let ativo = true
+    if (carregandoPerfil || professorId === null) {
+      setMeus([])
+      setCarregando(false)
+      return () => { ativo = false }
+    }
     setCarregando(true)
     professorService.listarSeminarios(professorId)
       .then((lista) => { if (ativo) setMeus(lista) })
@@ -56,7 +56,7 @@ export default function ProfessorDashboard() {
       })
       .finally(() => { if (ativo) setCarregando(false) })
     return () => { ativo = false }
-  }, [professorId])
+  }, [professorId, carregandoPerfil])
 
   const proximos = meus
     .filter((seminario) => seminario.status !== 'rascunho' && obterSessoesSeminario(seminario).some((sessao) => sessao.status !== 'finalizado'))
