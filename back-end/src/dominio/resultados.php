@@ -99,16 +99,20 @@ function compilar_resultados(PDO $pdo, int $dataId, ?int $alunoId = null): array
         $somaNotaAlunos = 0.0;
 
         foreach ($integrantes as $aluno) {
-            $alunoId = (int) $aluno['id'];
+            // Não sobrescrever $alunoId, que identifica
+            // o aluno que está consultando os resultados.
+            $integranteId = (int) $aluno['id'];
 
             $notaProfessor = 0.0;
             foreach ($criterios as $criterio) {
                 $criterioId = (int) $criterio['id'];
+
                 if ($criterio['tipo_avaliacao'] === 'grupo') {
                     $valor = $notaPorCriterioProfessor[$criterioId . ':0'] ?? 0.0;
                 } else {
-                    $valor = $notaPorCriterioProfessor[$criterioId . ':' . $alunoId] ?? 0.0;
+                    $valor = $notaPorCriterioProfessor[$criterioId . ':' . $integranteId] ?? 0.0;
                 }
+
                 $notaProfessor += $valor * (int) $criterio['peso_criterio'];
             }
             $notaProfessor /= 100;
@@ -116,32 +120,41 @@ function compilar_resultados(PDO $pdo, int $dataId, ?int $alunoId = null): array
             $somaPares = 0.0;
             foreach ($avaliadores as $avaliador) {
                 $notaAvaliador = 0.0;
+
                 foreach ($criterios as $criterio) {
                     $criterioId = (int) $criterio['id'];
-                    $alvo = $criterio['tipo_avaliacao'] === 'grupo' ? 0 : $alunoId;
+                    $alvo = $criterio['tipo_avaliacao'] === 'grupo'
+                        ? 0
+                        : $integranteId;
+
                     foreach ($paresGrupo as $nota) {
-                        if ((int) $nota['avaliador_id'] === $avaliador
+                        if (
+                            (int) $nota['avaliador_id'] === $avaliador
                             && (int) $nota['criterio_id'] === $criterioId
-                            && (int) ($nota['aluno_avaliado_id'] ?? 0) === $alvo) {
+                            && (int) ($nota['aluno_avaliado_id'] ?? 0) === $alvo
+                        ) {
                             $notaAvaliador += (float) $nota['nota'] * (int) $criterio['peso_criterio'];
                             break;
                         }
                     }
                 }
+
                 $somaPares += $notaAvaliador / 100;
             }
+
             $notaAlunos = $avaliadores !== []
                 ? $somaPares / count($avaliadores)
                 : $notaProfessor;
 
-            $notaFinal = $notaProfessor * ($pesoProfessor / 100) + $notaAlunos * ($pesoAlunos / 100);
+            $notaFinal = $notaProfessor * ($pesoProfessor / 100)
+                + $notaAlunos * ($pesoAlunos / 100);
 
             $somaNotaProfessor += $notaProfessor;
             $somaNotaAlunos += $notaAlunos;
             $somaMedia += $notaFinal;
 
             $integrantesResultado[] = [
-                'alunoId' => $alunoId,
+                'alunoId' => $integranteId,
                 'nome' => (string) $aluno['nome_completo'],
                 'notaProfessor' => round($notaProfessor, 2),
                 'notaAlunos' => round($notaAlunos, 2),
@@ -150,6 +163,7 @@ function compilar_resultados(PDO $pdo, int $dataId, ?int $alunoId = null): array
         }
 
         $quantidade = max(count($integrantes), 1);
+
         $grupo = [
             'posicao' => 0,
             'grupoId' => $grupoId,
@@ -161,38 +175,61 @@ function compilar_resultados(PDO $pdo, int $dataId, ?int $alunoId = null): array
             'avaliadoresConsiderados' => count($avaliadores),
             'integrantes' => $integrantesResultado,
         ];
+
         $ranking[] = $grupo;
 
         $idsIntegrantes = array_map('intval', array_column($integrantes, 'id'));
-        $grupoPertenceAluno = $alunoId !== null && in_array($alunoId, $idsIntegrantes, true);
+
+        $grupoPertenceAluno = $alunoId !== null
+            && in_array($alunoId, $idsIntegrantes, true);
+
         foreach ($feedbacks as $feedback) {
             if ((int) $feedback['grupo_id'] !== $grupoId) {
                 continue;
             }
-            if ($alunoId !== null && !$grupoPertenceAluno && $feedback['tipo_avaliador'] === 'aluno') {
+
+            if (
+                $alunoId !== null
+                && !$grupoPertenceAluno
+                && $feedback['tipo_avaliador'] === 'aluno'
+            ) {
                 continue;
             }
+
             $todosFeedbacks[] = [
                 'grupoId' => $grupoId,
                 'avaliadorId' => (int) $feedback['avaliador_id'],
-                'tipo' => $feedback['tipo_avaliador'] === 'aluno' ? 'par' : 'professor',
+                'tipo' => $feedback['tipo_avaliador'] === 'aluno'
+                    ? 'par'
+                    : 'professor',
                 'texto' => (string) $feedback['feedback_texto'],
                 'avaliadorNome' => $feedback['avaliador_nome'] ?? null,
             ];
         }
     }
 
-    usort($ranking, static fn (array $a, array $b): int => $b['mediaGeral'] <=> $a['mediaGeral']);
+    usort(
+        $ranking,
+        static fn (array $a, array $b): int =>
+            $b['mediaGeral'] <=> $a['mediaGeral']
+    );
+
     foreach ($ranking as $indice => &$item) {
         $item['posicao'] = $indice + 1;
+
+        // Na visão do professor ($alunoId === null),
+        // mantém os integrantes de todos os grupos.
+        // Na visão do aluno, preserva a restrição original.
         if ($alunoId !== null) {
             $pertence = false;
+
             foreach ($item['integrantes'] as $integrante) {
                 if ($integrante['alunoId'] === $alunoId) {
                     $pertence = true;
                     break;
                 }
             }
+
             if (!$pertence) {
                 $item['integrantes'] = [];
             }

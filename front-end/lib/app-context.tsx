@@ -2,10 +2,8 @@
 
 import * as React from 'react'
 import { toast } from 'sonner'
-import { avaliacoesIniciais, seminarios as seminariosMock } from './mock-data'
-import { adminService } from './services'
+import { adminService, professorService, toApiId } from './services'
 import type {
-  Avaliacao,
   LiveState,
   Role,
   Seminario,
@@ -15,10 +13,13 @@ import type {
 interface AppContextValue {
   currentUser: User | null
   carregandoPerfil: boolean
+  /** Identidade numérica do professor logado; fonte única para as telas do professor. */
+  professorId: number | null
   usuarios: User[]
   carregandoUsuarios: boolean
   seminarios: Seminario[]
-  avaliacoes: Avaliacao[]
+  carregandoSeminarios: boolean
+  recarregarSeminarios: () => Promise<void>
   live: LiveState
 
   loginAs: (user: User) => void
@@ -38,15 +39,21 @@ interface AppContextValue {
   finalizarSessao: (seminarioId: string, dataSessao: string) => void
   sortearOrdem: (seminarioId: string, dataSessao: string) => void
 
-  addAvaliacao: (a: Omit<Avaliacao, 'id' | 'criadoEm'>) => void
 
   // Apresentação ao vivo
-  startLive: (seminarioId: string, grupoId: string) => void
+startLive: (
+  seminarioId: string,
+  grupoId: string,
+  tempoApresentacaoMin?: number) => void
   pauseLive: () => void
   resumeLive: () => void
   resetLive: () => void
   finishLive: () => void
-  selectLiveGroup: (seminarioId: string, grupoId: string) => void
+selectLiveGroup: (
+  seminarioId: string,
+  grupoId: string,
+  tempoApresentacaoMin?: number
+) => void
   stopLive: () => void
 }
 
@@ -84,9 +91,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [carregandoPerfil, setCarregandoPerfil] = React.useState(true)
   const [usuarios, setUsuarios] = React.useState<User[]>([])
   const [carregandoUsuarios, setCarregandoUsuarios] = React.useState(true)
-  const [seminarios, setSeminarios] = React.useState<Seminario[]>(seminariosMock)
-  const [avaliacoes, setAvaliacoes] = React.useState<Avaliacao[]>(avaliacoesIniciais)
+  const [seminarios, setSeminarios] = React.useState<Seminario[]>([])
+  const [carregandoSeminarios, setCarregandoSeminarios] = React.useState(true)
   const [live, setLive] = React.useState<LiveState>(initialLive)
+
+  // O perfil logado é a fonte da identidade: a variável de ambiente só vale
+  // antes da hidratação, quando ainda não há perfil restaurado da sessão.
+  const professorId = React.useMemo<number | null>(() => {
+    if (currentUser) {
+      if (currentUser.role !== 'professor') return null
+      try {
+        return toApiId(currentUser.id)
+      } catch {
+        return null
+      }
+    }
+
+    const configurado = process.env.NEXT_PUBLIC_PROFESSOR_ID
+    if (configurado) {
+      const numero = Number(configurado)
+      if (Number.isInteger(numero) && numero > 0) return numero
+    }
+    return null
+  }, [currentUser])
 
   React.useEffect(() => {
     const perfil = perfilArmazenado()
@@ -111,6 +138,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ativo = false
     }
   }, [])
+
+  // Os seminários vêm da API, uma lista por professor ativo.
+  const recarregarSeminarios = React.useCallback(async () => {
+    const idsProfessores = usuarios
+      .filter((usuario) => usuario.role === 'professor' && usuario.status === 'ativo')
+      .map((usuario) => toApiId(usuario.id))
+
+    setCarregandoSeminarios(true)
+    try {
+      const listas = await Promise.all(
+        idsProfessores.map((id) => professorService.listarSeminarios(id)),
+      )
+      setSeminarios(listas.flat())
+    } catch {
+      toast.error('Não foi possível carregar os seminários da API.')
+    } finally {
+      setCarregandoSeminarios(false)
+    }
+  }, [usuarios])
+
+  React.useEffect(() => {
+    if (carregandoUsuarios) return
+    void recarregarSeminarios()
+  }, [carregandoUsuarios, recarregarSeminarios])
 
   // Cronômetro sincronizado na sessão.
   React.useEffect(() => {
@@ -223,7 +274,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const removeSeminario = React.useCallback((id: string) => {
     setSeminarios((prev) => prev.filter((seminario) => seminario.id !== id))
-    setAvaliacoes((prev) => prev.filter((avaliacao) => avaliacao.seminarioId !== id))
     setLive((prev) => prev.seminarioId === id ? initialLive : prev)
   }, [])
 
@@ -294,49 +344,58 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }))
   }, [])
 
-  const addAvaliacao = React.useCallback(
-    (a: Omit<Avaliacao, 'id' | 'criadoEm'>) => {
-      setAvaliacoes((prev) => {
-        const existingIndex = prev.findIndex((item) => item.seminarioId === a.seminarioId && item.dataSessao === a.dataSessao && item.grupoId === a.grupoId && item.avaliadorId === a.avaliadorId && item.tipo === a.tipo)
-        const updated = { ...a, id: existingIndex >= 0 ? prev[existingIndex].id : `av-${Date.now()}`, criadoEm: new Date().toISOString() }
-        return existingIndex >= 0 ? prev.map((item, index) => index === existingIndex ? updated : item) : [...prev, updated]
-      })
-    },
-    [],
-  )
+const startLive = React.useCallback(
+  (
+    seminarioId: string,
+    grupoId: string,
+    tempoApresentacaoMin = 15
+  ) => {
+    const dur =
+      Number.isFinite(tempoApresentacaoMin) &&
+      tempoApresentacaoMin > 0
+        ? Math.round(tempoApresentacaoMin * 60)
+        : 15 * 60
 
-  const startLive = React.useCallback(
-    (seminarioId: string, grupoId: string) => {
-      const s = seminarios.find((x) => x.id === seminarioId)
-      const dur = (s?.tempoApresentacaoMin ?? 15) * 60
-      setLive({
-        seminarioId,
-        grupoId,
-        status: 'em_andamento',
-        running: true,
-        durationSec: dur,
-        remainingSec: dur,
-      })
-      updateSeminario(seminarioId, { status: 'em_andamento' })
-    },
-    [seminarios, updateSeminario],
-  )
+    setLive({
+      seminarioId,
+      grupoId,
+      status: 'em_andamento',
+      running: true,
+      durationSec: dur,
+      remainingSec: dur,
+    })
 
-  const selectLiveGroup = React.useCallback(
-    (seminarioId: string, grupoId: string) => {
-      const s = seminarios.find((x) => x.id === seminarioId)
-      const dur = (s?.tempoApresentacaoMin ?? 15) * 60
-      setLive({
-        seminarioId,
-        grupoId,
-        status: 'aguardando',
-        running: false,
-        durationSec: dur,
-        remainingSec: dur,
-      })
-    },
-    [seminarios],
-  )
+    updateSeminario(seminarioId, {
+      status: 'em_andamento',
+    })
+  },
+  [updateSeminario],
+)
+
+
+const selectLiveGroup = React.useCallback(
+  (
+    seminarioId: string,
+    grupoId: string,
+    tempoApresentacaoMin = 15
+  ) => {
+    const dur =
+      Number.isFinite(tempoApresentacaoMin) &&
+      tempoApresentacaoMin > 0
+        ? Math.round(tempoApresentacaoMin * 60)
+        : 15 * 60
+
+    setLive({
+      seminarioId,
+      grupoId,
+      status: 'aguardando',
+      running: false,
+      durationSec: dur,
+      remainingSec: dur,
+    })
+  },
+  [],
+)
 
   const pauseLive = React.useCallback(
     () => setLive((p) => ({ ...p, running: false })),
@@ -370,10 +429,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const value: AppContextValue = {
     currentUser,
     carregandoPerfil,
+    professorId,
     usuarios,
     carregandoUsuarios,
     seminarios,
-    avaliacoes,
+    carregandoSeminarios,
+    recarregarSeminarios,
     live,
     loginAs,
     logout,
@@ -389,7 +450,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     atualizarGruposSessao,
     finalizarSessao,
     sortearOrdem,
-    addAvaliacao,
     startLive,
     pauseLive,
     resumeLive,
@@ -406,54 +466,4 @@ export function useApp() {
   const ctx = React.useContext(AppContext)
   if (!ctx) throw new Error('useApp deve ser usado dentro de AppProvider')
   return ctx
-}
-
-// Selectors utilitários
-export function calcularNotaGrupo(
-  seminario: Seminario,
-  avaliacoes: Avaliacao[],
-  grupoId: string,
-): {
-  notaProfessor: number | null
-  mediaPares: number | null
-  notaFinal: number | null
-  totalPares: number
-} {
-  const doGrupo = avaliacoes.filter(
-    (a) => a.seminarioId === seminario.id && a.grupoId === grupoId,
-  )
-  const pesoTotal = seminario.criterios.reduce((acc, c) => acc + c.peso, 0) || 1
-
-  const grupo = [...seminario.grupos, ...(seminario.sessoes ?? []).flatMap((sessao) => sessao.grupos)].find((item) => item.id === grupoId)
-  const notaPonderada = (a: Avaliacao) =>
-    seminario.criterios.reduce((acc, criterio) => {
-      const notaCriterio = criterio.tipo === 'individual' && grupo?.integrantesIds.length
-        ? (() => {
-            const notasIntegrantes = grupo.integrantesIds.map((alunoId) => a.notas[`${criterio.id}:${alunoId}`]).filter((nota): nota is number => nota !== undefined)
-            return notasIntegrantes.length ? notasIntegrantes.reduce((total, nota) => total + nota, 0) / notasIntegrantes.length : (a.notas[criterio.id] ?? 0)
-          })()
-        : (a.notas[criterio.id] ?? 0)
-      return acc + notaCriterio * criterio.peso
-    }, 0) / pesoTotal
-
-  const prof = doGrupo.find((a) => a.tipo === 'professor')
-  const pares = doGrupo.filter((a) => a.tipo === 'par')
-
-  const notaProfessor = prof ? notaPonderada(prof) : null
-  const mediaPares =
-    pares.length > 0
-      ? pares.reduce((acc, a) => acc + notaPonderada(a), 0) / pares.length
-      : null
-
-  let notaFinal: number | null = null
-  const pp = seminario.pesoProfessor
-  if (notaProfessor != null && mediaPares != null) {
-    notaFinal = notaProfessor * pp + mediaPares * (1 - pp)
-  } else if (notaProfessor != null) {
-    notaFinal = notaProfessor
-  } else if (mediaPares != null) {
-    notaFinal = mediaPares
-  }
-
-  return { notaProfessor, mediaPares, notaFinal, totalPares: pares.length }
 }

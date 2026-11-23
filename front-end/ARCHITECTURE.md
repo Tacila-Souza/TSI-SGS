@@ -43,7 +43,7 @@ A estrutura atualmente disponível não corresponde a uma separação Frontend/B
 │   ├── admin/user-manager.tsx            # Gestão compartilhada de alunos/professores
 │   ├── seminario/
 │   │   ├── live-timer.tsx
-│   │   ├── results-view.tsx
+│   │   ├── resultado-view.tsx
 │   │   └── seminario-card.tsx
 │   ├── app-shell.tsx
 │   ├── page-header.tsx

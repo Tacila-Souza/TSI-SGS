@@ -480,7 +480,7 @@ Usado por `/api/professor/resultados/compilar.php` e `/api/aluno/resultados/comp
 
 ### 7.11. `ApresentacaoDTO`
 
-Resposta de `GET /api/professor/apresentacao/carregar.php`, de `POST .../iniciar.php` e de `POST .../salvar-avaliacao.php`. É o payload que monta a tela ao vivo do professor.
+Resposta de `GET /api/professor/apresentacao/carregar.php` e de `POST .../salvar-avaliacao.php`; também prevista para `POST .../iniciar.php`, rota ainda pendente nesta base (ver 9.4). É o payload que monta a tela ao vivo do professor.
 
 ```json
 {
@@ -523,7 +523,7 @@ Resposta de `GET /api/professor/apresentacao/carregar.php`, de `POST .../iniciar
 
 > **Exceção legada amarrada:** os campos dentro de `grupos` (`seminario_data_id`, `ordem_apresentacao`, `integrantes_ids`) permanecem em `snake_case` neste DTO porque `carregarApresentacao` em `front-end/lib/services/professor.ts` e a página `/professor/seminarios/[id]/apresentar` os consomem exatamente assim. Não confundir com `GrupoDTO` (seção 7.6), que é camelCase e usado por `grupos/listar`, `grupos/cadastrar`, `grupos/editar`, `grupos/sortear` e pelo campo `grupos` de `SeminarioDTO`. Se essa exceção for eliminada, o service e a página devem ser atualizados no mesmo conjunto de mudanças.
 
-**Nota:** `POST .../iniciar.php` devolve este mesmo DTO; `POST .../encerrar.php` devolve `{ "dataId": number, "status": "finalizado", "gruposPendentes": number }`.
+**Nota:** `POST .../iniciar.php` devolveria este mesmo DTO (rota pendente); `POST .../encerrar.php` devolve `{ "dataId": number, "status": "finalizado", "gruposPendentes": number }`.
 
 ### 7.12. `FormularioAvaliacaoAlunoDTO`
 
@@ -692,7 +692,7 @@ Resposta de `GET /api/aluno/avaliacoes/formulario.php` e de `POST /api/aluno/ava
 }
 ```
 
-- Resposta de `POST /api/professor/apresentacao/salvar-avaliacao.php?professor_id={id}&data_id={id}&grupo_id={id}`: `ApresentacaoDTO` (seção 7.11), já com notas/feedback persistidos e contadores atualizados. O mesmo DTO é devolvido por `iniciar.php`; `encerrar.php` devolve `{ "dataId", "status": "finalizado", "gruposPendentes" }`.
+- Resposta de `POST /api/professor/apresentacao/salvar-avaliacao.php?professor_id={id}&data_id={id}&grupo_id={id}`: `ApresentacaoDTO` (seção 7.11), já com notas/feedback persistidos e contadores atualizados. O mesmo DTO é previsto para `iniciar.php` (rota pendente); `encerrar.php` devolve `{ "dataId", "status": "finalizado", "gruposPendentes" }`.
 
 **Sorteio de ordem**
 
@@ -704,7 +704,7 @@ Resposta de `GET /api/aluno/avaliacoes/formulario.php` e de `POST /api/aluno/ava
 
 **Sincronização de grupos em lote**
 
-`PUT /api/professor/grupos/sincronizar.php?professor_id={id}&data_id={id}`
+`PUT /api/professor/grupos/sincronizar.php?professor_id={id}&data_id={id}` — **rota pendente nesta base**; a função de domínio `sincronizar_grupos()` já existe.
 
 ```json
 {
@@ -789,7 +789,7 @@ Esta tabela é o índice único entre endpoint, DTO e consumidor no frontend. Em
 | `/api/professor/grupos/{listar,cadastrar,editar,sortear,sincronizar}.php` | GET/POST/PUT | `GrupoDTO` / `GrupoDTO[]` | `professor.ts` → aba de grupos |
 | `/api/professor/grupos/excluir.php` | DELETE | `{ "id": number }` | `professor.ts` → aba de grupos |
 | `/api/professor/presencas/{listar,salvar}.php` | GET/POST | `[{ alunoId: number, nome: string, presente: boolean }]` | `professor.ts` → aba de chamada |
-| `/api/professor/apresentacao/carregar.php`, `iniciar.php`, `salvar-avaliacao.php` | GET/POST | `ApresentacaoDTO` (7.11) | `professor.ts` → `/professor/seminarios/[id]/apresentar` |
+| `/api/professor/apresentacao/carregar.php`, `iniciar.php` (pendente), `salvar-avaliacao.php` | GET/POST | `ApresentacaoDTO` (7.11) | `professor.ts` → `/professor/seminarios/[id]/apresentar` |
 | `/api/professor/apresentacao/encerrar.php` | POST | `{ dataId, status: "finalizado", gruposPendentes }` | `professor.ts` → tela ao vivo |
 | `/api/professor/resultados/compilar.php` | GET | `ResultadoDTO` (7.10) | `professor.ts` → `ResultadoView` |
 | `/api/aluno/seminarios/{listar,detalhes}.php` | GET | `SeminarioDTO` / `SeminarioDTO[]` | `aluno.ts` → dashboard, listagem e detalhes |
@@ -824,7 +824,7 @@ Lacunas e observações consolidadas (itens marcados como resolvidos não são p
 3. **Admin** não tem tabela. Usar a identidade fixa `u-coord`.
 4. **Sessão cancelada** existe no schema, mas não na UI do MVP. Manter fora do contrato até ser especificada.
 5. **Exclusão em lote de usuários:** decidida e implementada via `POST .../excluir-lote.php` com `{ "ids": number[] }` (DP-021); não é mais uma lacuna.
-6. **Atualização de grupos:** resolvida por `PUT /api/professor/grupos/sincronizar.php?professor_id={id}&data_id={id}` com `{ "grupos": [{ "id": number|null, "tema": string, "integrantesIds": number[] }] }` (DP-023/DP-025); implementada, não pendente.
+6. **Atualização de grupos:** resolvida por `PUT /api/professor/grupos/sincronizar.php?professor_id={id}&data_id={id}` com `{ "grupos": [{ "id": number|null, "tema": string, "integrantesIds": number[] }] }` (DP-023/DP-025); a função de domínio existe, mas a rota ainda está pendente nesta base.
 7. **Rotas do aluno:** as canônicas são `/aluno/seminarios/{id}/ao-vivo` e `/aluno/resultados`. As rotas `/avaliar` e `/resultados` por seminário são legado da spec; não são endpoints da API.
 8. **`ResultsView`:** legado, substituído por `ResultadoView`, que consome `ResultadoDTO` diretamente. Não recalcular nota no React.
 9. **`ApresentacaoDTO`:** o array `grupos` mantém chaves `snake_case` por compatibilidade com a tela ao vivo; está formalizado na seção 7.11 e na amarração da seção 9.4.

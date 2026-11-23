@@ -39,12 +39,9 @@ export default function ApresentarSeminarioPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { live, startLive, pauseLive, resumeLive, resetLive, finishLive, selectLiveGroup } = useApp()
+  const { live, startLive, pauseLive, resumeLive, resetLive, finishLive, selectLiveGroup, carregandoPerfil, professorId: professorIdContext, recarregarSeminarios } = useApp()
 
-  const professorId = React.useMemo(() => {
-    const configurado = process.env.NEXT_PUBLIC_PROFESSOR_ID
-    return configurado ? Number(configurado) : 1
-  }, [])
+  const professorId = professorIdContext ?? 0
 
   const [seminario, setSeminario] = React.useState<Seminario | null>(null)
   const [grupos, setGrupos] = React.useState<GrupoApresentacao[]>([])
@@ -65,6 +62,10 @@ export default function ApresentarSeminarioPage() {
 
   
 const carregar = React.useCallback(async () => {
+  if (carregandoPerfil || professorId === 0) {
+    setCarregando(false)
+    return
+  }
   setCarregando(true)
   setErroCarregamento('')
 
@@ -75,6 +76,7 @@ const carregar = React.useCallback(async () => {
     )
 
     setSeminario(detalhes)
+    void recarregarSeminarios()
 
     const sessoesDisponiveis = detalhes.sessoes ?? []
 
@@ -113,18 +115,33 @@ const carregar = React.useCallback(async () => {
   } finally {
     setCarregando(false)
   }
-}, [professorId, id, searchParams, dataSessao])
+}, [professorId, carregandoPerfil, id, searchParams, dataSessao, recarregarSeminarios])
 
   React.useEffect(() => { void carregar() }, [carregar])
 
   const primeiroGrupo = grupos.slice().sort((a, b) => (a.ordem_apresentacao ?? 99) - (b.ordem_apresentacao ?? 99))[0]
   const grupoAtual = grupos.find((grupo) => grupo.id === grupoSelecionado) ?? primeiroGrupo
 
-  React.useEffect(() => {
-    if (!grupoAtual || grupoSelecionado !== null) return
-    setGrupoSelecionado(grupoAtual.id)
-    selectLiveGroup(id, `g-${grupoAtual.id}`)
-  }, [grupoAtual, grupoSelecionado, id, selectLiveGroup])
+
+React.useEffect(() => {
+  if (!grupoAtual || !seminario || grupoSelecionado !== null) {
+    return
+  }
+
+  setGrupoSelecionado(grupoAtual.id)
+
+  selectLiveGroup(
+    id,
+    `g-${grupoAtual.id}`,
+    seminario.tempoApresentacaoMin
+  )
+}, [
+  grupoAtual,
+  grupoSelecionado,
+  id,
+  selectLiveGroup,
+  seminario,
+])
 
   React.useEffect(() => {
     if (!grupoAtual) return
@@ -140,6 +157,24 @@ const carregar = React.useCallback(async () => {
     setNotaErro('')
 }, [grupoAtual])
 
+  if (erroCarregamento) {
+    return (
+      <Card className="mx-auto w-full max-w-xl">
+        <CardHeader>
+          <CardTitle>Erro ao carregar apresentação</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {erroCarregamento}
+          </p>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={() => void carregar()}>
+            Tentar novamente
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
   if (carregando && !seminario) {
     return <p className="text-sm text-muted-foreground">Carregando apresentação…</p>
   }
@@ -148,27 +183,9 @@ const carregar = React.useCallback(async () => {
     return <p className="text-sm text-muted-foreground">Seminário não encontrado.</p>
   }
   const sessaoFinalizada = sessao.status === 'finalizado'
-  const chamadaRealizada = Object.values(sessao.presenca).some(Boolean)
+  const chamadaRealizada = sessao.chamadaRealizada ?? Object.values(sessao.presenca).some(Boolean)
   const gruposAvaliados = grupos.filter((grupo) => grupo.avaliado).length
   const todosAvaliados = grupos.length > 0 && gruposAvaliados === grupos.length
-
-if (erroCarregamento) {
-  return (
-    <Card className="mx-auto w-full max-w-xl">
-      <CardHeader>
-        <CardTitle>Erro ao carregar apresentação</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          {erroCarregamento}
-        </p>
-      </CardHeader>
-      <CardContent>
-        <Button onClick={() => void carregar()}>
-          Tentar novamente
-        </Button>
-      </CardContent>
-    </Card>
-  )
-}
   if (!grupos.length || !chamadaRealizada) {
     const faltaGrupo = !grupos.length
     return (
@@ -193,9 +210,16 @@ if (erroCarregamento) {
   }
 
   function selecionarGrupo(grupoId: number) {
-    setGrupoSelecionado(grupoId)
-    selectLiveGroup(id, `g-${grupoId}`)
-  }
+  if (!seminario) return
+
+  setGrupoSelecionado(grupoId)
+
+  selectLiveGroup(
+    id,
+    `g-${grupoId}`,
+    seminario.tempoApresentacaoMin
+  )
+}
 
   async function salvarAvaliacao() {
     if (!grupoAtual) return
@@ -322,10 +346,22 @@ async function concluirSessao() {
               <LiveTimer
                 live={live}
                 canStart={grupos.length > 0}
-                onStart={() => {
-                  if (!chamadaRealizada) { setShowAttendanceAlert(true); return }
-                  if (grupoAtual) startLive(id, `g-${grupoAtual.id}`)
-                }}
+                
+onStart={() => {
+  if (!chamadaRealizada) {
+    setShowAttendanceAlert(true)
+    return
+  }
+
+  if (grupoAtual) {
+    startLive(
+      id,
+      `g-${grupoAtual.id}`,
+      seminario.tempoApresentacaoMin
+    )
+  }
+}}
+
                 onPause={pauseLive}
                 onResume={resumeLive}
                 onReset={resetLive}

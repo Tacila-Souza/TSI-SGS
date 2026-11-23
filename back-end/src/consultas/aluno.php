@@ -33,6 +33,19 @@ function listar_seminarios_aluno(PDO $pdo, int $alunoId): array
     return $seminarios;
 }
 
+function buscar_seminario(PDO $pdo, int $seminarioId): ?array
+{
+    $stmt = $pdo->prepare('SELECT * FROM seminarios WHERE id = ?');
+    $stmt->execute([$seminarioId]);
+    $seminario = $stmt->fetch();
+    if ($seminario === false) {
+        return null;
+    }
+
+    carregar_detalhes_seminario($pdo, $seminario);
+    return $seminario;
+}
+
 function listar_datas_aluno(PDO $pdo, int $alunoId, int $seminarioId): array
 {
     validar_matricula_seminario($pdo, $alunoId, $seminarioId);
@@ -56,7 +69,17 @@ function formulario_avaliacao_aluno(PDO $pdo, int $alunoId, int $dataId): array
     if ($data === false) {
         responder_erro('Sessão não encontrada.', 404);
     }
+    if ((string) $data['status'] !== 'em_andamento') {
+        responder_erro('A avaliação está disponível apenas durante a sessão em andamento.', 400);
+    }
     validar_matricula_seminario($pdo, $alunoId, (int) $data['seminario_id']);
+
+    $stmt = $pdo->prepare('SELECT presente FROM presencas WHERE seminario_data_id = ? AND aluno_id = ?');
+    $stmt->execute([$dataId, $alunoId]);
+    $presente = $stmt->fetchColumn();
+    if ($presente === false || (int) $presente !== 1) {
+        responder_erro('Aluno não consta na chamada desta sessão.', 403);
+    }
 
     $stmt = $pdo->prepare('SELECT id, nome_criterio, peso_criterio, tipo_avaliacao FROM seminario_criterios WHERE seminario_id = ? ORDER BY id');
     $stmt->execute([(int) $data['seminario_id']]);

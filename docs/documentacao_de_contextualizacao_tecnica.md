@@ -648,7 +648,7 @@ O contrato detalhado está em `docs/contrato_api_frontend.md`. As regras obrigat
 
 #### **6.3.17. Fase 1 da implementação de referência — infraestrutura e admin**
 
-> As seções 6.3.17 a 6.3.20 registram a implementação de referência já validada. No pacote de handoff o `back-end/` está vazio (seção 6.3.22); elas descrevem o alvo, não arquivos presentes.
+> As seções 6.3.17 a 6.3.20 registram a implementação de referência já validada. A seção 6.3.22 descreve o estado atual do `back-end/`; apenas duas rotas de professor do catálogo continuam pendentes.
 
 Na implementação de referência, a Fase 1 foi concluída e validada:
 
@@ -703,7 +703,7 @@ Implementado e validado:
 
 - Domínio de avaliação em `src/dominio/avaliacao.php`: carregar apresentação, iniciar, salvar nota/feedback, gerar mock idempotente e encerrar sessão.
 - Domínio de resultados em `src/dominio/resultados.php`: `T_s`, `P_s`, `F_s`, média do grupo, ranking, fallback `P_s = T_s` e arredondamento só na resposta.
-- 5 endpoints: `apresentacao/carregar.php`, `iniciar.php`, `salvar-avaliacao.php`, `encerrar.php` e `resultados/compilar.php`.
+- 4 endpoints presentes: `apresentacao/carregar.php`, `salvar-avaliacao.php`, `encerrar.php` e `resultados/compilar.php`; `apresentacao/iniciar.php` segue pendente (ver 6.3.22).
 - Frontend: página de apresentação e aba de resultados passaram a consumir a API; componente `ResultadoView` renderiza o `ResultadoDTO`.
 - Múltiplas datas validadas: grupos, presença e resultados são independentes por `seminario_data_id`.
 
@@ -745,9 +745,9 @@ Regras de amarração:
 
 #### **6.3.22. Estado de handoff (pacote para a equipe)**
 
-Na cópia entregue aos integrantes, o diretório `back-end/` está **vazio**: infraestrutura, endpoints e domínio devem ser reconstruídos seguindo este documento, o contrato, os padrões PHP, as specs e o DDL oficial. `database/`, `docs/` e `front-end/` acompanham o pacote como base de especificação e de integração.
+O diretório `back-end/` conta hoje com infraestrutura em `src/`, **19 endpoints admin**, **19 endpoints do professor** e **5 endpoints do aluno** em `public/api/`. Faltam apenas `apresentacao/iniciar.php` e `grupos/sincronizar.php` do catálogo 6.3.7; as funções de domínio correspondentes já existem, e a exposição HTTP deve seguir este documento, o contrato, os padrões PHP, as specs e o DDL oficial.
 
-Ordem de trabalho recomendada: infraestrutura (`src/`) → endpoints admin → domínio/endpoints de professor → avaliação e resultados → endpoints do aluno → validação com `curl`, `php -l`, `npx tsc --noEmit` e `npm run build`. O `front-end/lib/services/` já implementado define o formato esperado; o contrato, seção 9.4, é o índice de amarração.
+Ordem de trabalho recomendada para o que falta: expor as duas rotas pendentes (`iniciar.php` e `sincronizar.php`) → validação com `curl`, `php -l`, `npx tsc --noEmit` e `npm run build`. O `front-end/lib/services/` já implementado define o formato esperado; o contrato, seção 9.4, é o índice de amarração.
 
 ## **7\. Filtros e consultas**
 
@@ -951,5 +951,7 @@ Este documento constitui a referência técnica geral do projeto e deverá ser u
 | DP-034 | Aluno só acessa seminários da disciplina em que está matriculado, validado no backend por `validar_matricula_seminario`. | Nenhuma tela do aluno depende de filtro no cliente para segurança. |
 | DP-035 | Avaliação do aluno exige presença na chamada e bloqueia autoavaliação; as notas são upsertadas com `tipo_avaliador = 'aluno'`. | Regras RN-003/RN-004 aplicadas também no endpoint, não só na UI. |
 | DP-036 | Resultados do aluno usam o mesmo compilador do professor com filtro de privacidade no backend. | O frontend nunca recebe notas/feedbacks de outros grupos além do ranking. |
-| DP-037 | Formatos de resposta antes implícitos (`ApresentacaoDTO`, `FormularioAvaliacaoAlunoDTO`, chamada e encerramento) passam a ser definidos no contrato e amarrados ao consumidor na seção 9.4; o pacote de handoff entrega `back-end/` vazio. | A equipe reimplementa o backend com um único índice endpoint → DTO → tela, sem precisar inferir shapes das specs ou do código antigo. |
+| DP-037 | Formatos de resposta antes implícitos (`ApresentacaoDTO`, `FormularioAvaliacaoAlunoDTO`, chamada e encerramento) passam a ser definidos no contrato e amarrados ao consumidor na seção 9.4; o catálogo 6.3.7 é a fonte de verdade, com 19 rotas de professor presentes e duas pendentes. | A equipe reimplementa o backend com um único índice endpoint → DTO → tela, sem precisar inferir shapes das specs ou do código antigo. |
+| DP-038 | A exclusão em lote de professores é implementada apesar da especificação antiga indicar que ficaria fora do MVP. | O catálogo da seção 6.3.7 e o `adminService.excluirProfessoresLote` do frontend já dependem dela; sem o endpoint a seleção múltipla falharia. |
+| DP-039 | `GET /api/admin/disciplinas/listar.php` aceita `?curso_id=` opcional: sem o filtro devolve todas as disciplinas, com ele devolve apenas as do curso. | O service do frontend chama o endpoint nas duas formas; `query_int()` retorna `null` quando o parâmetro falta e `listar_disciplinas()` trata `null` como “sem filtro”. |
 

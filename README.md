@@ -13,21 +13,19 @@ O SGS é um sistema acadêmico de gestão de seminários. O sistema atende três
 A aplicação é dividida em:
 
 - **Frontend:** Next.js/React com TypeScript, na pasta `/front-end`.
-- **Backend:** PHP puro, sem framework, com PDO e respostas JSON, na pasta `/back-end`. **No pacote de handoff esta pasta está vazia** e deve ser reconstruída conforme a documentação.
+- **Backend:** PHP puro, sem framework, com PDO e respostas JSON, na pasta `/back-end`.
 - **Banco:** MySQL 8.0.13 ou superior, com scripts oficiais na pasta `/database`.
 - **Documentação:** especificações e decisões na pasta `/docs`.
 
 ## 2. Estado atual do projeto
 
-> **Pacote de handoff para a equipe:** este exemplar é entregue com `back-end/` vazio. O que está descrito abaixo como “referência implementada” documenta o formato esperado pela UI e pelo contrato; não significa que os arquivos PHP estejam presentes nesta cópia.
-
 | Área | Estado nesta cópia |
 | --- | --- |
 | Documentação | Consolidada e amarrada: este guia, o documento técnico (seções 6.3.21 e 6.3.22), o contrato JSON (seções 7.11, 7.12 e 9.4), os padrões PHP e as specs formam a base de implementação. |
 | Banco de dados | Os 3 scripts oficiais estão em `/database`; o banco local de referência foi validado em MySQL 8.0.44. Cada integrante deve aplicá-los no seu ambiente (ver §4.3). |
-| Backend | **Pasta `/back-end` vazia.** Infraestrutura (`src/`), endpoints e domínio devem ser implementados pela equipe seguindo o catálogo da seção 6.3.7 do documento técnico. |
+| Backend | Infraestrutura em `back-end/src/`, **19 endpoints admin**, **19 endpoints do professor** e **5 endpoints do aluno** implementados em `back-end/public/api/`. Faltam 2 rotas do catálogo 6.3.7: `apresentacao/iniciar.php` e `grupos/sincronizar.php` (ver §9). |
 | Frontend | Projeto Next.js completo em `/front-end`, com `lib/services/` já integrado (`admin.ts`, `professor.ts`, `aluno.ts`, `api.ts`, `mappers.ts`). `mock-data.ts` é apenas legado. |
-| Integração | O contrato e os services definem o alvo. Enquanto o backend não existir, as telas que chamam a API apresentarão erro de conexão — comportamento esperado no handoff. |
+| Integração | Admin, aluno e professor consomem a API via `lib/services`; as duas rotas pendentes do catálogo não são chamadas pelo service atual. |
 
 **Consequência prática:** implemente o PHP seguindo **contrato → catálogo 6.3.7 → DDL oficial → spec da funcionalidade**. Os services do frontend são a referência viva do formato que a UI espera; o índice único endpoint → DTO → tela está no contrato, seção **9.4**.
 
@@ -80,7 +78,7 @@ Nomes antigos como `/backend/`, `/frontend/` e `/dados/` devem ser lidos como `/
 
 | Caminho | Descrição |
 | --- | --- |
-| `back-end/` | API PHP. **Vazia neste pacote.** Deve conter `public/` (document root, único exposto via HTTP) e `src/` (código interno). |
+| `back-end/` | API PHP, com `public/` (document root, único exposto via HTTP) e `src/` (código interno). |
 | `front-end/` | Aplicação Next.js/React + TypeScript; `lib/services/` concentra as chamadas HTTP. |
 | `database/` | Scripts SQL oficiais: `01_schema_ddl.sql`, `02_trigger_exclusividade.sql` e `03_seeds_dml.sql`. |
 | `docs/` | Guia de entrada, documentação técnica, contrato JSON, padrões de código e specs por perfil. |
@@ -97,7 +95,7 @@ Arquivos de referência na raiz das pastas:
 | `docs/AGENTS.md` | Instruções para agentes de IA e prompt inicial atualizado para o handoff. |
 | `docs/especs/` | Especificações funcionais por perfil. |
 | `database/01_schema_ddl.sql` | Fonte oficial do schema. |
-| `back-end/README.md` | Convenções da API e configuração do `.env` do backend (quando recriado). |
+| `back-end/README.md` | Convenções da API e configuração do `.env` do backend. |
 | `front-end/package.json` | Dependências e scripts (`dev`, `build`, `start`). |
 | `front-end/.env.example` | Modelo de `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_PROFESSOR_ID` e `NEXT_PUBLIC_ALUNO_ID`. |
 
@@ -254,8 +252,8 @@ Regras obrigatórias:
 - Novas chamadas HTTP do frontend ficam em lib/services.
 - Antes de criar ou alterar endpoint, atualize o contrato JSON e a seção 6.3.
 
-Estado atual (pacote de handoff):
-- /back-end está vazio; infraestrutura, endpoints, domínio e serializadores devem ser implementados pela equipe.
+Estado atual:
+- /back-end com infraestrutura, 19 endpoints admin, 19 endpoints do professor e 5 endpoints do aluno; faltam apenas apresentacao/iniciar.php e grupos/sincronizar.php.
 - /front-end está completo, com `lib/services/` integrado; `mock-data.ts` é apenas legado.
 - /database e /docs estão prontos; o contrato (seções 7.11, 7.12 e 9.4) amarra os formatos de resposta.
 - A arquitetura aprovada é híbrida + contrato JSON; a ordem de trabalho está em docs/README.md §4.3 e na seção 6.3.22 do documento técnico.
@@ -306,8 +304,8 @@ O `DELIMITER $$` de `02_trigger_exclusividade.sql` é uma diretiva do cliente `m
 
 ## 9. Pendências e armadilhas conhecidas
 
-- **Backend a reconstruir:** nenhum endpoint existe neste pacote. Implemente na ordem: infraestrutura → admin → professor (configuração) → avaliação/resultados → aluno. Use o catálogo da seção 6.3.7 e o índice do contrato, seção 9.4.
-- **Frontend integrado, mas dependente da API:** as telas consomem `lib/services`; sem o backend rodando, elas falham ao carregar. Isso é esperado no handoff.
+- **Duas rotas de professor pendentes:** a base tem infraestrutura, 19 endpoints admin, 19 endpoints do professor e 5 endpoints do aluno. Faltam apenas `/api/professor/apresentacao/iniciar.php` e `/api/professor/grupos/sincronizar.php` do catálogo 6.3.7; as funções de domínio correspondentes já existem. Sem `iniciar.php`, o professor não inicia sessões novas pela API, mas as sessões já em andamento e as demais rotas funcionam normalmente. Siga o catálogo e o índice do contrato, seção 9.4, ao implementá-las.
+- **Frontend integrado, mas dependente da API:** as telas consomem `lib/services`; sempre que um endpoint ainda não existir, a tela correspondente falhará ao carregar.
 - **IDs diferentes:** o banco usa inteiros; o frontend usa strings prefixadas. A conversão é responsabilidade de `lib/services`.
 - **Nomes diferentes:** o banco usa `nome_completo`, `matricula`, `ano_matricula`, `cursos.sigla`; o frontend usa `nome`, `registro`, `anoMatricula`, `sigla`. O contrato define o de-para.
 - **Enums diferentes:** `pendente`/`concluido` no banco vs `rascunho`/`finalizado` no frontend; `aluno` vs `par`. O contrato define o de-para.

@@ -13,7 +13,7 @@ O SGS é um sistema acadêmico de gestão de seminários com três perfis:
 Arquitetura:
 
 - **Frontend:** Next.js/React + TypeScript em `/front-end`.
-- **Backend:** PHP puro, sem framework, PDO e JSON em `/back-end` — **pasta vazia neste pacote**, a reconstruir pela equipe.
+- **Backend:** PHP puro, sem framework, PDO e JSON em `/back-end`, com infraestrutura em `src/` e endpoints em `public/api/`.
 - **Banco:** MySQL 8.0.13+ em `/database`.
 - **Documentação:** `/docs`.
 
@@ -71,7 +71,8 @@ Se a tarefa for de frontend, leia também `front-end/lib/types.ts` e `front-end/
 - Um aluno não pode pertencer a dois grupos da mesma sessão; há trigger para `INSERT` e `UPDATE` em `grupo_alunos`.
 - Validações de sessão×grupo e de matrícula×presença ficam no backend; o banco não faz essas checagens complexas.
 - `cursos.sigla` é persistida; `Turma.nome` deriva dela. Período existe apenas no cadastro de aluno (`anoMatricula` + `semestreEntrada`).
-- Os selects de curso/disciplina do formulário de seminário vêm da API; nunca de `mock-data`. O professor ativo nos testes vem de `NEXT_PUBLIC_PROFESSOR_ID` em `front-end/.env.local`.
+- Os selects de curso/disciplina do formulário de seminário vêm da API; nunca de `mock-data`. A identidade do professor nas telas vem do perfil logado (`useApp().professorId`); `NEXT_PUBLIC_PROFESSOR_ID` em `front-end/.env.local` serve apenas como fallback antes da hidratação. O menu "Trocar professor" atualiza o perfil e todas as telas passam a usar o novo ID.
+- `useApp().seminarios` é carregado da API (um list por professor ativo) e recarregado após criar/editar/excluir seminário ou sessão; o dashboard da coordenação também lê cursos e disciplinas da API. Não usar `mock-data` como fonte de dados nesses pontos.
 - `seminario_criterios` não tem descrição; critério é nome, peso e tipo.
 - Cursos com disciplinas e disciplinas com seminários não podem ser excluídos; retornar `409 Conflict`.
 - Listagens filtram ativos por padrão; `?incluir_inativos=1` inclui inativos.
@@ -107,13 +108,13 @@ Se a tarefa for de frontend, leia também `front-end/lib/types.ts` e `front-end/
 - Toda mudança de endpoint, campo, enum ou regra deve atualizar o contrato JSON (inclusive a amarração da seção 9.4) e a seção 6.3.
 - Toda decisão nova deve virar um DP na seção 13 do documento técnico.
 
-## 5. Estado atual (pacote de handoff)
+## 5. Estado atual
 
-- `/back-end` está **vazio** nesta cópia. Infraestrutura, endpoints, domínio e serializadores devem ser reconstruídos pela equipe.
+- `/back-end` tem infraestrutura em `src/`, **19 endpoints admin**, **19 endpoints do professor** e **5 endpoints do aluno** em `public/api/`. Faltam apenas `apresentacao/iniciar.php` e `grupos/sincronizar.php` do catálogo 6.3.7.
 - `/front-end` está completo, com `lib/services/` já integrado (`admin.ts`, `professor.ts`, `aluno.ts`, `api.ts`, `mappers.ts`); `mock-data.ts` é apenas legado.
 - `/database` contém os 3 scripts oficiais; o banco local de referência foi validado em MySQL 8.0.44. Cada pessoa aplica os scripts no seu ambiente conforme `docs/README.md` §4.3.
 - `/docs` está consolidado e amarrado: catálogo em 6.3.7, formatos em 6.3.21, estado de handoff em 6.3.22 e índice endpoint → DTO → tela no contrato, seção 9.4.
-- Enquanto o backend não existir, as telas que chamam a API falharão ao carregar — comportamento esperado.
+- As duas rotas pendentes não são chamadas pelo `lib/services` atual; ao implementá-las, siga o catálogo 6.3.7 e a seção 9.4 do contrato.
 
 ## 6. Como trabalhar nesta base
 
@@ -163,8 +164,8 @@ Regras:
 - O schema oficial é database/01_schema_ddl.sql; não copie SQL das specs.
 - Chamadas HTTP novas do frontend ficam em lib/services.
 
-Estado atual (pacote de handoff):
-- /back-end vazio; implemente infraestrutura, endpoints, domínio e serializadores.
+Estado atual:
+- /back-end com infraestrutura, 19 endpoints admin, 19 endpoints do professor e 5 endpoints do aluno; faltam apenas apresentacao/iniciar.php e grupos/sincronizar.php.
 - /front-end completo, com lib/services integrado; mock-data é apenas legado.
 - /database e /docs prontos; contrato 9.4 amarra endpoint → DTO → tela.
 - Ordem de trabalho: docs/README.md §4.3 e documento técnico 6.3.22.
