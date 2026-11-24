@@ -66,7 +66,7 @@ export default function AlunoSeminarioDetalhePage() {
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">Histórico e resultados</h2>
         <p className="text-sm text-muted-foreground">Ranking da sessão de {sessao.data}.</p>
-        {resultado ? <ResultadoView resultado={resultado} /> : <p className="text-sm text-muted-foreground">Resultados indisponíveis.</p>}
+        {resultado ? <ResultadoView resultado={resultado} pesoProfessor={seminario.pesoProfessor} /> : <p className="text-sm text-muted-foreground">Resultados indisponíveis.</p>}
       </section>
     ) : (
       <Card>

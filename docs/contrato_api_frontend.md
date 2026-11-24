@@ -428,6 +428,8 @@ Usado em listagens, detalhes e edição.
 
 Usado por `/api/professor/resultados/compilar.php` e `/api/aluno/resultados/compilar.php`.
 
+No perfil aluno, o endpoint complementa o DTO do domínio com `pesoProfessor`, `pesoAlunos`, `notasProfessorPorCriterio` e `notasParesPorCriterio`, e reaplica a privacidade (DP-036) sem alterar `src/`.
+
 ```json
 {
   "seminarioId": 1,
@@ -485,7 +487,8 @@ Usado por `/api/professor/resultados/compilar.php` e `/api/aluno/resultados/comp
 | `notaAlunos` | number | `P_s`; quando `n = 0`, o backend aplica `P_s = T_s` e marca `semAvaliadores`. |
 | `avaliadoresConsiderados` | number | `n` usado no cálculo. |
 | `integrantes` | array | Notas individuais. |
-| `notasProfessorPorCriterio` | array (opcional) | Par `criterioId`/`nota` na ordem de `criterios`; critério individual usa a média entre os integrantes. `nota` é `null` quando não há nota do professor. No perfil aluno, o array é vazio nos grupos dos quais ele não participa (DP-036). Quando ausente, a UI mostra "—" para cada critério. |
+| `notasProfessorPorCriterio` | array (opcional) | Par `criterioId`/`nota` na ordem de `criterios`; critério individual usa a média entre os integrantes. `nota` é `null` quando não há nota do professor. Quando ausente, a UI mostra "—" para cada critério. |
+| `notasParesPorCriterio` | array (opcional) | Mesmo formato, com a média das notas dos colegas por critério. No endpoint do aluno, o array é vazio nos grupos dos quais ele não participa (DP-036). |
 | `feedbacks` | array | Feedbacks coletados, de `professor` e de `par`, com `tipo`, `avaliadorId` e `avaliadorNome`; a UI separa os dois tipos. Respeita a privacidade do aluno (DP-036). |
 
 ### 7.11. `ApresentacaoDTO`

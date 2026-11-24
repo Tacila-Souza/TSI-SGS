@@ -64,8 +64,16 @@ function Feedbacks({
   )
 }
 
-export function ResultadoView({ resultado }: { resultado: ResultadoDTO }) {
+export function ResultadoView({
+  resultado,
+  pesoProfessor: pesoProfessorSeminario,
+}: {
+  resultado: ResultadoDTO
+  pesoProfessor?: number
+}) {
   const top3 = resultado.ranking.slice(0, 3)
+  const pesoProfessor = resultado.pesoProfessor ?? pesoProfessorSeminario
+  const pesoAlunos = pesoProfessor != null ? 1 - pesoProfessor : null
   const feedbacksPorGrupo = new Map<number, ResultadoDTO['feedbacks']>()
   for (const feedback of resultado.feedbacks) {
     const atual = feedbacksPorGrupo.get(feedback.grupoId) ?? []
@@ -86,7 +94,8 @@ export function ResultadoView({ resultado }: { resultado: ResultadoDTO }) {
           <Card key={grupo.grupoId} className={grupo.posicao === 1 ? 'border-amber-400 bg-amber-50/60 dark:bg-amber-950/20' : ''}>
             <CardContent className="flex flex-col items-center gap-2 py-6 text-center">
               {grupo.posicao === 1 ? <Trophy className="size-7 text-amber-500" /> : <Medal className="size-7 text-muted-foreground" />}
-              <span className="text-sm font-medium">{grupo.grupoNome}</span>
+              <span className="text-sm font-medium text-muted-foreground">{grupo.grupoNome}</span>
+              <span className="text-pretty text-center font-medium">{grupo.tema}</span>
               <span className="text-3xl font-semibold text-foreground">{fmt(grupo.mediaGeral)}</span>
               <Badge variant="secondary">{grupo.posicao}º lugar</Badge>
             </CardContent>
@@ -108,9 +117,17 @@ export function ResultadoView({ resultado }: { resultado: ResultadoDTO }) {
                 <span className="text-lg font-semibold">{fmt(grupo.mediaGeral)}</span>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
-                <div><p className="text-xs text-muted-foreground">{resultado.pesoProfessor != null ? `Professor · peso ${Math.round(resultado.pesoProfessor * 100)}%` : 'Professor'}</p><p className="font-medium">{fmt(grupo.notaProfessor)}</p><Progress value={grupo.notaProfessor * 10} /></div>
-                <div><p className="text-xs text-muted-foreground">Pares</p><p className="font-medium">{fmt(grupo.notaAlunos)}</p><Progress value={grupo.notaAlunos * 10} /></div>
-                <div><p className="text-xs text-muted-foreground">Avaliadores</p><p className="font-medium">{grupo.avaliadoresConsiderados}</p></div>
+                <div>
+                  <p className="text-xs text-muted-foreground">{pesoProfessor != null ? `Professor · peso ${Math.round(pesoProfessor * 100)}%` : 'Professor'}</p>
+                  <p className="font-medium">{fmt(grupo.notaProfessor)}</p>
+                  <Progress value={grupo.notaProfessor * 10} />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">{pesoAlunos != null ? `Alunos · peso ${Math.round(pesoAlunos * 100)}% (${grupo.avaliadoresConsiderados} avaliações)` : `Pares (${grupo.avaliadoresConsiderados} avaliações)`}</p>
+                  <p className="font-medium">{fmt(grupo.notaAlunos)}</p>
+                  <Progress value={grupo.notaAlunos * 10} />
+                </div>
+                <div><p className="text-xs text-muted-foreground">Média Geral</p><p className="text-lg font-semibold">{fmt(grupo.mediaGeral)}</p></div>
               </div>
               {resultado.criterios.length > 0 && (
                 <div className="flex flex-col gap-2 border-t pt-3">
@@ -129,9 +146,36 @@ export function ResultadoView({ resultado }: { resultado: ResultadoDTO }) {
                   </div>
                 </div>
               )}
+              {resultado.criterios.length > 0 && (
+                <div className="flex flex-col gap-2 border-t pt-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Avaliação dos alunos</span>
+                    {pesoAlunos != null && <Badge variant="outline">Peso na nota final: {Math.round(pesoAlunos * 100)}%</Badge>}
+                  </div>
+                  {grupo.integrantes.length > 0 ? (
+                    <>
+                      <div className="flex flex-wrap gap-2">
+                        {resultado.criterios.map((criterio) => {
+                          const nota = grupo.notasParesPorCriterio?.find((item) => item.criterioId === criterio.id)?.nota
+                          return (
+                            <Badge key={criterio.id} variant="secondary" className="gap-1.5 font-normal">
+                              {criterio.nome}
+                              <span className="text-muted-foreground">{criterio.tipo === 'individual' ? 'Individual' : 'Em Grupo'} · {criterio.peso}%</span>
+                              <span className="font-semibold text-foreground">{nota != null ? fmt(nota) : '—'}</span>
+                            </Badge>
+                          )
+                        })}
+                      </div>
+                      <p className="text-sm text-muted-foreground">Média dos alunos: <span className="font-semibold text-foreground">{fmt(grupo.notaAlunos)}</span></p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Resumo disponível apenas para o seu grupo.</p>
+                  )}
+                </div>
+              )}
               {grupo.integrantes.length > 0 && (
                 <div className="flex flex-col gap-1 border-t pt-3">
-                  <span className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><Users className="size-3" />Integrantes</span>
+                  <span className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><Users className="size-3" />Nota final individual por integrante</span>
                   {grupo.integrantes.map((integrante) => (
                     <div key={integrante.alunoId} className="flex items-center justify-between text-sm">
                       <span>{integrante.nome}</span>

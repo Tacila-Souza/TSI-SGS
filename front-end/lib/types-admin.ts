@@ -67,6 +67,7 @@ export interface ResultadoDTO {
       notaFinal: number
     }>
     notasProfessorPorCriterio?: Array<{ criterioId: number; nota: number | null }>
+    notasParesPorCriterio?: Array<{ criterioId: number; nota: number | null }>
   }>
   feedbacks: Array<{
     grupoId: number

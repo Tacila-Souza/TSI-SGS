@@ -14,6 +14,7 @@ import { Card, CardContent } from '@/components/ui/card'
 export default function AlunoResultadosPage() {
   const [resultados, setResultados] = React.useState<ResultadoDTO[]>([])
   const [titulos, setTitulos] = React.useState<Record<number, string>>({})
+  const [pesos, setPesos] = React.useState<Record<number, number>>({})
   const [carregando, setCarregando] = React.useState(true)
 
   const alunoId = React.useMemo(() => {
@@ -41,6 +42,7 @@ export default function AlunoResultadosPage() {
         if (ativo) {
           setResultados(carregados.filter((item): item is ResultadoDTO => item !== null))
           setTitulos(Object.fromEntries(finais.map(({ seminario, dataId }) => [dataId, seminario.titulo])))
+          setPesos(Object.fromEntries(finais.map(({ seminario, dataId }) => [dataId, seminario.pesoProfessor])))
         }
       })
       .catch((erro) => { if (ativo) toast.error(erro instanceof Error ? erro.message : 'Erro ao carregar resultados.') })
@@ -53,7 +55,7 @@ export default function AlunoResultadosPage() {
     {carregando ? (
       <p className="text-sm text-muted-foreground">Carregando resultados…</p>
     ) : resultados.length ? (
-      resultados.map((resultado) => <section key={resultado.dataId} className="flex flex-col gap-3"><h2 className="font-display text-lg font-semibold">{titulos[resultado.dataId] ?? `Sessão ${resultado.dataSessao}`}</h2><ResultadoView resultado={resultado} /></section>)
+      resultados.map((resultado) => <section key={resultado.dataId} className="flex flex-col gap-3"><h2 className="font-display text-lg font-semibold">{titulos[resultado.dataId] ?? `Sessão ${resultado.dataSessao}`}</h2><ResultadoView resultado={resultado} pesoProfessor={pesos[resultado.dataId]} /></section>)
     ) : (
       <Card><CardContent className="flex flex-col items-center gap-3 p-10 text-center"><ClipboardList className="size-8 text-muted-foreground" /><p className="text-sm text-muted-foreground">Ainda não há seminários concluídos para exibir.</p></CardContent></Card>
     )}

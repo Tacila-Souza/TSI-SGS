@@ -31,7 +31,10 @@ export default function AlunoSeminariosPage() {
   return <div className="flex flex-col gap-6">
     <PageHeader title="Seminários" description="Acompanhe os seminários das suas disciplinas." />
     {carregando ? <p className="text-sm text-muted-foreground">Carregando…</p> : seminarios.length ? (
-      <div className="grid gap-4 md:grid-cols-2">{seminarios.map((seminario) => <SeminarioCard key={seminario.id} seminario={seminario} basePath="/aluno/seminarios" />)}</div>
+      <>
+        <div className="grid gap-4 md:grid-cols-2">{seminarios.map((seminario) => <SeminarioCard key={seminario.id} seminario={seminario} basePath="/aluno/seminarios" />)}</div>
+        <p className="text-xs text-muted-foreground">{new Set(seminarios.map((seminario) => seminario.turmaId)).size} disciplinas vinculadas</p>
+      </>
     ) : (
       <Empty className="rounded-xl border py-10"><EmptyMedia variant="icon"><BookOpen /></EmptyMedia><EmptyTitle>Nenhum seminário disponível</EmptyTitle><EmptyDescription>Não há seminários cadastrados para as suas disciplinas.</EmptyDescription></Empty>
     )}
