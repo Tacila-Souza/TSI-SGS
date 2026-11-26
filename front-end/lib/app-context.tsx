@@ -41,12 +41,19 @@ interface AppContextValue {
   addAvaliacao: (a: Omit<Avaliacao, 'id' | 'criadoEm'>) => void
 
   // Apresentação ao vivo
-  startLive: (seminarioId: string, grupoId: string) => void
+startLive: (
+  seminarioId: string,
+  grupoId: string,
+  tempoApresentacaoMin?: number) => void
   pauseLive: () => void
   resumeLive: () => void
   resetLive: () => void
   finishLive: () => void
-  selectLiveGroup: (seminarioId: string, grupoId: string) => void
+selectLiveGroup: (
+  seminarioId: string,
+  grupoId: string,
+  tempoApresentacaoMin?: number
+) => void
   stopLive: () => void
 }
 
@@ -69,9 +76,9 @@ function mensagemErro(erro: unknown): string {
 }
 
 const initialLive: LiveState = {
-  seminarioId: 's-live',
-  grupoId: 'gl-1',
-  status: 'em_andamento',
+  seminarioId: '',
+  grupoId: '',
+  status: 'aguardando',
   running: false,
   durationSec: 15 * 60,
   remainingSec: 15 * 60,
@@ -305,38 +312,59 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [],
   )
 
-  const startLive = React.useCallback(
-    (seminarioId: string, grupoId: string) => {
-      const s = seminarios.find((x) => x.id === seminarioId)
-      const dur = (s?.tempoApresentacaoMin ?? 15) * 60
-      setLive({
-        seminarioId,
-        grupoId,
-        status: 'em_andamento',
-        running: true,
-        durationSec: dur,
-        remainingSec: dur,
-      })
-      updateSeminario(seminarioId, { status: 'em_andamento' })
-    },
-    [seminarios, updateSeminario],
-  )
 
-  const selectLiveGroup = React.useCallback(
-    (seminarioId: string, grupoId: string) => {
-      const s = seminarios.find((x) => x.id === seminarioId)
-      const dur = (s?.tempoApresentacaoMin ?? 15) * 60
-      setLive({
-        seminarioId,
-        grupoId,
-        status: 'aguardando',
-        running: false,
-        durationSec: dur,
-        remainingSec: dur,
-      })
-    },
-    [seminarios],
-  )
+const startLive = React.useCallback(
+  (
+    seminarioId: string,
+    grupoId: string,
+    tempoApresentacaoMin = 15
+  ) => {
+    const dur =
+      Number.isFinite(tempoApresentacaoMin) &&
+      tempoApresentacaoMin > 0
+        ? Math.round(tempoApresentacaoMin * 60)
+        : 15 * 60
+
+    setLive({
+      seminarioId,
+      grupoId,
+      status: 'em_andamento',
+      running: true,
+      durationSec: dur,
+      remainingSec: dur,
+    })
+
+    updateSeminario(seminarioId, {
+      status: 'em_andamento',
+    })
+  },
+  [updateSeminario],
+)
+
+
+const selectLiveGroup = React.useCallback(
+  (
+    seminarioId: string,
+    grupoId: string,
+    tempoApresentacaoMin = 15
+  ) => {
+    const dur =
+      Number.isFinite(tempoApresentacaoMin) &&
+      tempoApresentacaoMin > 0
+        ? Math.round(tempoApresentacaoMin * 60)
+        : 15 * 60
+
+    setLive({
+      seminarioId,
+      grupoId,
+      status: 'aguardando',
+      running: false,
+      durationSec: dur,
+      remainingSec: dur,
+    })
+  },
+  [],
+)
 
   const pauseLive = React.useCallback(
     () => setLive((p) => ({ ...p, running: false })),

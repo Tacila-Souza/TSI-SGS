@@ -56,45 +56,90 @@ export default function ApresentarSeminarioPage() {
   const [notaErro, setNotaErro] = React.useState('')
   const [showFinish, setShowFinish] = React.useState(false)
   const [showAttendanceAlert, setShowAttendanceAlert] = React.useState(false)
+  const [erroCarregamento, setErroCarregamento] = React.useState('')
   const inicializado = React.useRef(false)
 
   const sessoes = seminario ? obterSessoesSeminario(seminario) : []
   const sessao = sessoes.find((item) => item.data === dataSessao) ?? sessoes[0]
   const dataId = sessao?.id
 
-  const carregar = React.useCallback(async () => {
-    setCarregando(true)
-    try {
-      const detalhes = await professorService.detalhesSeminario(professorId, id)
-      setSeminario(detalhes)
-      if (!inicializado.current) {
-        inicializado.current = true
-        const pretendida = searchParams.get('data')
-        const primeira = detalhes.sessoes?.[0]?.data ?? detalhes.data
-        setDataSessao(pretendida ?? primeira)
-      }
-      const sessaoAtual = (detalhes.sessoes ?? []).find((s) => s.data === dataSessao) ?? detalhes.sessoes?.[0]
-      if (sessaoAtual?.id) {
-        const apresentacao = await professorService.carregarApresentacao(professorId, sessaoAtual.id)
-        setGrupos(apresentacao.grupos as GrupoApresentacao[])
-      }
-    } catch (erro) {
-      toast.error(mensagemErro(erro))
-    } finally {
-      setCarregando(false)
+  
+const carregar = React.useCallback(async () => {
+  setCarregando(true)
+  setErroCarregamento('')
+
+  try {
+    const detalhes = await professorService.detalhesSeminario(
+      professorId,
+      id
+    )
+
+    setSeminario(detalhes)
+
+    const sessoesDisponiveis = detalhes.sessoes ?? []
+
+    const dataPretendida =
+      dataSessao || searchParams.get('data') || detalhes.data
+
+    const sessaoAtual =
+      sessoesDisponiveis.find(
+        (sessao) => sessao.data === dataPretendida
+      ) ?? sessoesDisponiveis[0]
+
+    if (!sessaoAtual) {
+      setGrupos([])
+      return
     }
-  }, [professorId, id, searchParams, dataSessao])
+
+    if (dataSessao !== sessaoAtual.data) {
+      setDataSessao(sessaoAtual.data)
+    }
+
+    if (sessaoAtual.id == null) {
+      setGrupos([])
+      return
+    }
+
+    const apresentacao = await professorService.carregarApresentacao(
+      professorId,
+      sessaoAtual.id
+    )
+
+    setGrupos(apresentacao.grupos as GrupoApresentacao[])
+  } catch (erro) {
+    setGrupos([])
+    setErroCarregamento(mensagemErro(erro))
+    toast.error(mensagemErro(erro))
+  } finally {
+    setCarregando(false)
+  }
+}, [professorId, id, searchParams, dataSessao])
 
   React.useEffect(() => { void carregar() }, [carregar])
 
   const primeiroGrupo = grupos.slice().sort((a, b) => (a.ordem_apresentacao ?? 99) - (b.ordem_apresentacao ?? 99))[0]
   const grupoAtual = grupos.find((grupo) => grupo.id === grupoSelecionado) ?? primeiroGrupo
 
-  React.useEffect(() => {
-    if (!grupoAtual || grupoSelecionado !== null) return
-    setGrupoSelecionado(grupoAtual.id)
-    selectLiveGroup(id, `g-${grupoAtual.id}`)
-  }, [grupoAtual, grupoSelecionado, id, selectLiveGroup])
+
+React.useEffect(() => {
+  if (!grupoAtual || !seminario || grupoSelecionado !== null) {
+    return
+  }
+
+  setGrupoSelecionado(grupoAtual.id)
+
+  selectLiveGroup(
+    id,
+    `g-${grupoAtual.id}`,
+    seminario.tempoApresentacaoMin
+  )
+}, [
+  grupoAtual,
+  grupoSelecionado,
+  id,
+  selectLiveGroup,
+  seminario,
+])
 
   React.useEffect(() => {
     if (!grupoAtual) return
@@ -108,7 +153,7 @@ export default function ApresentarSeminarioPage() {
     setNotas(mapa)
     setFeedback(grupoAtual.feedback ?? '')
     setNotaErro('')
-  }, [grupoAtual?.id])
+}, [grupoAtual])
 
   if (carregando && !seminario) {
     return <p className="text-sm text-muted-foreground">Carregando apresentação…</p>
@@ -117,11 +162,28 @@ export default function ApresentarSeminarioPage() {
   if (!seminario || !sessao || !dataId) {
     return <p className="text-sm text-muted-foreground">Seminário não encontrado.</p>
   }
-
+  const sessaoFinalizada = sessao.status === 'finalizado'
   const chamadaRealizada = Object.values(sessao.presenca).some(Boolean)
   const gruposAvaliados = grupos.filter((grupo) => grupo.avaliado).length
   const todosAvaliados = grupos.length > 0 && gruposAvaliados === grupos.length
 
+if (erroCarregamento) {
+  return (
+    <Card className="mx-auto w-full max-w-xl">
+      <CardHeader>
+        <CardTitle>Erro ao carregar apresentação</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          {erroCarregamento}
+        </p>
+      </CardHeader>
+      <CardContent>
+        <Button onClick={() => void carregar()}>
+          Tentar novamente
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
   if (!grupos.length || !chamadaRealizada) {
     const faltaGrupo = !grupos.length
     return (
@@ -146,9 +208,16 @@ export default function ApresentarSeminarioPage() {
   }
 
   function selecionarGrupo(grupoId: number) {
-    setGrupoSelecionado(grupoId)
-    selectLiveGroup(id, `g-${grupoId}`)
-  }
+  if (!seminario) return
+
+  setGrupoSelecionado(grupoId)
+
+  selectLiveGroup(
+    id,
+    `g-${grupoId}`,
+    seminario.tempoApresentacaoMin
+  )
+}
 
   async function salvarAvaliacao() {
     if (!grupoAtual) return
@@ -175,23 +244,41 @@ export default function ApresentarSeminarioPage() {
     }
     try {
       await professorService.salvarAvaliacao(professorId, dataId!, grupoAtual.id, notasPayload, feedback)
-      toast.success(`Avaliação de Grupo ${grupoAtual.ordem_apresentacao ?? grupoAtual.id} salva com sucesso.`)
-      setNotaErro('')
-      await carregar()
+   const atualizado = await professorService.carregarApresentacao(
+  professorId,
+  dataId!
+)
+
+setGrupos(atualizado.grupos as GrupoApresentacao[])
+setNotaErro('')
+
+toast.success('Avaliação salva e grupo atualizado com sucesso.')
     } catch (erro) {
       toast.error(mensagemErro(erro))
     }
   }
 
-  async function concluirSessao() {
-    try {
-      await professorService.encerrarApresentacao(professorId, dataId!)
-      finishLive()
-      setShowFinish(true)
-    } catch (erro) {
-      toast.error(mensagemErro(erro))
-    }
+
+async function concluirSessao() {
+  try {
+    await professorService.encerrarApresentacao(
+      professorId,
+      dataId!
+    )
+
+    finishLive()
+
+    // Busca novamente o status da sessão no banco
+    await carregar()
+
+    setShowFinish(true)
+
+    toast.success('Sessão finalizada com sucesso.')
+  } catch (erro) {
+    toast.error(mensagemErro(erro))
   }
+}
+
 
   return (
     <div className="flex flex-col gap-6">
@@ -203,6 +290,25 @@ export default function ApresentarSeminarioPage() {
           Voltar ao seminário
         </Button>
       </PageHeader>
+
+{sessaoFinalizada && (
+  <div
+    role="status"
+    className="flex items-center gap-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-4 text-emerald-600"
+  >
+    <CheckCircle className="size-6 shrink-0" />
+
+    <div>
+      <p className="font-semibold">
+        Trabalho encerrado!
+      </p>
+      <p className="text-sm">
+        A apresentação desta data foi finalizada.
+        As avaliações permanecem salvas no sistema.
+      </p>
+    </div>
+  </div>
+)}
 
       <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <Card className="h-fit">
@@ -238,10 +344,22 @@ export default function ApresentarSeminarioPage() {
               <LiveTimer
                 live={live}
                 canStart={grupos.length > 0}
-                onStart={() => {
-                  if (!chamadaRealizada) { setShowAttendanceAlert(true); return }
-                  if (grupoAtual) startLive(id, `g-${grupoAtual.id}`)
-                }}
+                
+onStart={() => {
+  if (!chamadaRealizada) {
+    setShowAttendanceAlert(true)
+    return
+  }
+
+  if (grupoAtual) {
+    startLive(
+      id,
+      `g-${grupoAtual.id}`,
+      seminario.tempoApresentacaoMin
+    )
+  }
+}}
+
                 onPause={pauseLive}
                 onResume={resumeLive}
                 onReset={resetLive}

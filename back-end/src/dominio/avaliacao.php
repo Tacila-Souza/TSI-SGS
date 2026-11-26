@@ -78,26 +78,83 @@ function iniciar_apresentacao(PDO $pdo, int $professorId, int $dataId): array
     return carregar_apresentacao($pdo, $professorId, $dataId);
 }
 
-function encerrar_apresentacao(PDO $pdo, int $professorId, int $dataId): array
-{
-    validar_propriedade_data($pdo, $dataId, $professorId);
+function encerrar_apresentacao(
+    PDO $pdo,
+    int $professorId,
+    int $dataId
+): array {
+    $data = validar_propriedade_data(
+        $pdo,
+        $dataId,
+        $professorId
+    );
+
+    $seminarioId = (int) $data['seminario_id'];
 
     $stmt = $pdo->prepare(
         "SELECT COUNT(*) FROM grupos
-         WHERE seminario_data_id = ? AND status <> 'avaliado'"
+         WHERE seminario_data_id = ?
+         AND status <> 'avaliado'"
     );
     $stmt->execute([$dataId]);
+
     $pendentes = (int) $stmt->fetchColumn();
 
     $pdo->beginTransaction();
+
     try {
-        $stmt = $pdo->prepare("UPDATE seminario_datas SET status = 'concluida' WHERE id = ?");
+        // Finaliza a sessão atual
+        $stmt = $pdo->prepare(
+            "UPDATE seminario_datas
+             SET status = 'concluida'
+             WHERE id = ?"
+        );
+
         $stmt->execute([$dataId]);
+
+        // Verifica se todas as datas foram concluídas
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM seminario_datas
+             WHERE seminario_id = ?
+             AND status <> 'concluida'"
+        );
+
+        $stmt->execute([$seminarioId]);
+
+        $datasPendentes = (int) $stmt->fetchColumn();
+
+        // Verifica se ainda existem grupos sem avaliação
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*)
+             FROM grupos g
+             INNER JOIN seminario_datas sd
+                ON sd.id = g.seminario_data_id
+             WHERE sd.seminario_id = ?
+             AND g.status <> 'avaliado'"
+        );
+
+        $stmt->execute([$seminarioId]);
+
+        $gruposPendentes = (int) $stmt->fetchColumn();
+
+        // Finaliza o seminário quando todas as
+        // sessões e avaliações estiverem concluídas
+        if ($datasPendentes === 0 && $gruposPendentes === 0) {
+            $stmt = $pdo->prepare(
+                "UPDATE seminarios
+                 SET status = 'concluido'
+                 WHERE id = ?"
+            );
+
+            $stmt->execute([$seminarioId]);
+        }
+
         $pdo->commit();
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
+
         throw $e;
     }
 
