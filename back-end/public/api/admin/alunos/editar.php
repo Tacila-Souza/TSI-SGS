@@ -5,31 +5,39 @@ require dirname(__DIR__, 4) . '/src/bootstrap.php';
 
 exigir_metodo('PUT');
 exigir_identidade('admin');
-$id = parametro_inteiro('id');
+$id = query_int('id');
 $dados = ler_json();
 
-$validado = validar_dados_aluno($dados);
-$status = array_key_exists('status', $dados) ? validar_status($dados['status']) : null;
-
-if (carregar_usuario_dto($pdo, 'aluno', $id) === null) {
-    throw new RegraNegocioException('Aluno não encontrado.', 404);
+$aluno = buscar_aluno($pdo, $id);
+if ($aluno === null) {
+    responder_erro('Aluno não encontrado.', 404);
 }
-validar_unicidade_usuario($pdo, 'aluno', $validado['email'], $validado['registro'], $id);
 
-$comando = $pdo->prepare(
-    'UPDATE alunos
-     SET nome_completo = ?, email = ?, matricula = ?, ano_matricula = ?,
-         semestre_entrada = ?, status = COALESCE(?, status)
-     WHERE id = ?'
+$nome = campo_texto($dados, 'nome', 150);
+$email = campo_email($dados);
+$registro = campo_texto($dados, 'registro', 30);
+$anoMatricula = campo_int($dados, 'anoMatricula', 2000);
+$semestreEntrada = campo_enum($dados, 'semestreEntrada', ['1', '2']);
+$status = campo_enum($dados + ['status' => $aluno['status']], 'status', ['ativo', 'inativo']);
+
+foreach ([
+    'email' => $email,
+    'matricula' => $registro,
+] as $coluna => $valor) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM alunos WHERE {$coluna} = ? AND id <> ?");
+    $stmt->execute([$valor, $id]);
+    if ((int) $stmt->fetchColumn() > 0) {
+        throw new HttpErro('E-mail ou matrícula já cadastrado.', 409);
+    }
+}
+
+$stmt = $pdo->prepare(
+    'UPDATE alunos SET nome_completo = ?, email = ?, matricula = ?, ano_matricula = ?, semestre_entrada = ?, status = ? WHERE id = ?'
 );
-$comando->execute([
-    $validado['nome'],
-    $validado['email'],
-    $validado['registro'],
-    $validado['anoMatricula'],
-    (int) $validado['semestreEntrada'],
-    $status,
-    $id,
-]);
+$stmt->execute([$nome, $email, $registro, $anoMatricula, (int) $semestreEntrada, $status, $id]);
 
-responder_sucesso(carregar_usuario_dto($pdo, 'aluno', $id));
+responder_sucesso(
+    serializar_aluno(buscar_aluno($pdo, $id)),
+    200,
+    'Aluno atualizado com sucesso.'
+);

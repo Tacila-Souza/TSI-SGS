@@ -7,40 +7,30 @@ exigir_metodo('POST');
 exigir_identidade('admin');
 $dados = ler_json();
 
-$validado = validar_dados_aluno($dados);
-$nome = $validado['nome'];
-$email = $validado['email'];
-$registro = $validado['registro'];
-$anoMatricula = $validado['anoMatricula'];
-$semestreEntrada = $validado['semestreEntrada'];
+$nome = campo_texto($dados, 'nome', 150);
+$email = campo_email($dados);
+$registro = campo_texto($dados, 'registro', 30);
+$anoMatricula = campo_int($dados, 'anoMatricula', 2000);
+$semestreEntrada = campo_enum($dados, 'semestreEntrada', ['1', '2']);
 
-validar_unicidade_usuario($pdo, 'aluno', $email, $registro, null);
-
-try {
-    $comando = $pdo->prepare(
-        'INSERT INTO alunos (nome_completo, email, matricula, ano_matricula, semestre_entrada, status)
-         VALUES (?, ?, ?, ?, ?, "ativo")'
-    );
-    $comando->execute([$nome, $email, $registro, $anoMatricula, (int) $semestreEntrada]);
-} catch (PDOException $erro) {
-    if (str_starts_with((string) $erro->getCode(), '23')) {
-        throw new RegraNegocioException(
-            'E-mail ou matrícula já cadastrado.',
-            409,
-            ['registro' => 'E-mail ou matrícula já pertence a outro aluno.'],
-        );
-    }
-    throw $erro;
-}
-
-$linha = [
-    'id' => (int) $pdo->lastInsertId(),
-    'nome_completo' => $nome,
+foreach ([
     'email' => $email,
     'matricula' => $registro,
-    'ano_matricula' => $anoMatricula,
-    'semestre_entrada' => $semestreEntrada,
-    'status' => 'ativo',
-];
+] as $coluna => $valor) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM alunos WHERE {$coluna} = ?");
+    $stmt->execute([$valor]);
+    if ((int) $stmt->fetchColumn() > 0) {
+        throw new HttpErro('E-mail ou matrícula já cadastrado.', 409);
+    }
+}
 
-responder_sucesso(serializar_usuario($linha, [], 'aluno'), 201);
+$stmt = $pdo->prepare(
+    'INSERT INTO alunos (nome_completo, email, matricula, ano_matricula, semestre_entrada) VALUES (?, ?, ?, ?, ?)'
+);
+$stmt->execute([$nome, $email, $registro, $anoMatricula, (int) $semestreEntrada]);
+
+responder_sucesso(
+    serializar_aluno(buscar_aluno($pdo, (int) $pdo->lastInsertId())),
+    201,
+    'Aluno cadastrado com sucesso.'
+);
